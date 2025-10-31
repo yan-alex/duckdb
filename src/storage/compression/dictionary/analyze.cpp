@@ -44,7 +44,7 @@ bool DictionaryAnalyzeState::CalculateSpaceRequirements(bool new_string, idx_t s
 void DictionaryAnalyzeState::Flush(bool final) {
 	segment_count++;
 	current_tuple_count = 0;
-	max_unique_count_across_segments = MaxValue(max_unique_count_across_segments, current_unique_count);
+	// max_unique_count_across_segments = MaxValue(max_unique_count_across_segments, current_unique_count);
 	current_unique_count = 0;
 	current_dict_size = 0;
 	current_set.clear();
