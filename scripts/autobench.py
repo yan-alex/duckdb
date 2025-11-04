@@ -13,6 +13,40 @@ import sys, os
 
 from regression.benchmark import BenchmarkRunner, BenchmarkRunnerConfig
 
+import subprocess
+
+def run_build(path_dir: str):
+    print(f"\033[1;36mBuilding {path_dir}...\033[0m")
+
+    env = os.environ.copy()
+    env.update({
+        "BUILD_BENCHMARK": "1",
+        "CORE_EXTENSIONS": "tpch",
+        "GEN": "ninja"
+    })
+
+    # Run build, capture stdout/stderr in memory
+    result = subprocess.run(
+        ["make", "-C", path_dir],
+        capture_output=True,
+        text=True,
+        env=env
+    )
+    # Detect whether anything was built
+    built = (
+            "Building CXX object" in result.stdout
+            or "Linking CXX executable" in result.stdout
+    )
+
+    if result.returncode != 0:
+        print(f"\033[1;31m❌ Build failed for {path_dir} with exit code {result.returncode}\033[0m")
+        sys.exit(1)
+
+    if built:
+        print(f"\033[1;32m✅ Build succeeded and compiled new files in {path_dir}\033[0m")
+    else:
+        print(f"\033[1;33m No changes, so nothing was rebuilt in {path_dir}\033[0m")
+    return built
 
 # Set up the argument parser
 parser = argparse.ArgumentParser(description="Script to run and plot benchmark comparison for old vs new builds.")
@@ -29,6 +63,8 @@ parser.add_argument(
 # Parse the arguments
 args = parser.parse_args()
 
+built_new = run_build(args.new_path)
+built_old = run_build(args.old_path)
 
 # Assign parsed arguments to variables
 old_runner_path = args.old_path + "/build/release/benchmark/benchmark_runner"
