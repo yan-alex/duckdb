@@ -120,6 +120,59 @@ BoundStatement Binder::Bind(AlterStatement &stmt) {
 	stmt.info->schema = entry->ParentSchema().name;
 
 	if (!stmt.info->IsAddPrimaryKey()) {
+		/* TODO:
+		 *		✅for an alter table - add column:
+		 *		✅bind the default expression
+		 *		✅check if it's inconsistent/volatile
+		 *		if so, create the different plans:
+		 *		-Volatile:
+		 *			- ALTER TABLE t ADD COLUMN u <type> DEFAULT NULL;
+		 *			- UPDATE t SET u = <expression>;
+		 *			- ALTER TABLE t ALTER u SET DEFAULT <expression>;
+		 *		-Inconsistent:
+		 *			- ALTER TABLE t ADD COLUMN u <type> DEFAULT <constant> (by evaluating the expression)
+		 *			- ALTER TABLE t ALTER u SET DEFAULT <expression>;
+		 */
+
+
+		auto &alter_table_info = stmt.info->Cast<AlterTableInfo>();
+		if (alter_table_info.alter_table_type == AlterTableType::ADD_COLUMN) {
+			auto &add_column_info = alter_table_info.Cast<AddColumnInfo>();
+			if (add_column_info.new_column.HasDefaultValue()) {
+				unique_ptr<ParsedExpression> default_value = add_column_info.new_column.DefaultValue().Copy();
+				// We have a default value, bind it
+				ExpressionBinder expr_binder(*this, context);
+				try {
+					auto bound_default = expr_binder.Bind(default_value);
+
+					if (!bound_default->IsConsistent()) {
+						// ALTER TABLE t ADD COLUMN u <type> DEFAULT NULL;
+						// UPDATE t SET u = <expression>;
+						// ALTER TABLE t ALTER u SET DEFAULT <expression>;
+
+
+
+					} else if (bound_default->IsVolatile()) {
+						// ALTER TABLE t ADD COLUMN u <type> DEFAULT <constant> (by evaluating the expression)
+						// ALTER TABLE t ALTER u SET DEFAULT <expression>;
+
+
+					}
+
+					// // Print the expression's value
+					// Value result_value;
+					// auto eval_success = ExpressionExecutor::TryEvaluateScalar(context, *bound_default, result_value);
+					// // Insert the default Value.
+					// if (eval_success) {
+					// 	std::cout << result_value.ToString();
+					// }
+					// (void)bound_default;
+				} catch (const BinderException &e) {
+					throw e; // rethrow the exception
+				}
+			}
+		}
+
 		result.plan = make_uniq<LogicalSimple>(LogicalOperatorType::LOGICAL_ALTER, std::move(stmt.info));
 		return result;
 	}
