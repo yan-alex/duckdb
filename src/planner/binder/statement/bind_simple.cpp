@@ -134,6 +134,11 @@ BoundStatement Binder::Bind(AlterStatement &stmt) {
 		 *			- ALTER TABLE t ALTER u SET DEFAULT <expression>;
 		 */
 
+		// 📜 What default_expression types mean:
+		//! CONSISTENT              -> this function always returns the same result when given the same input, no variance
+		//! CONSISTENT_WITHIN_QUERY -> this function returns the same result WITHIN the same query/transaction
+		//!                            but the result might change across queries (e.g. NOW(), CURRENT_TIME)
+		//! VOLATILE                -> the result of this function might change per row (e.g. RANDOM())
 
 		auto &alter_table_info = stmt.info->Cast<AlterTableInfo>();
 		if (alter_table_info.alter_table_type == AlterTableType::ADD_COLUMN) {
@@ -145,28 +150,53 @@ BoundStatement Binder::Bind(AlterStatement &stmt) {
 				try {
 					auto bound_default = expr_binder.Bind(default_value);
 
-					if (!bound_default->IsConsistent()) {
+					vector<unique_ptr<LogicalOperator>> nodes;
+
+					// Populate nodes
+					if (bound_default->IsVolatile()) {
 						// ALTER TABLE t ADD COLUMN u <type> DEFAULT NULL;
 						// UPDATE t SET u = <expression>;
 						// ALTER TABLE t ALTER u SET DEFAULT <expression>;
 
 
+						// // FIXME: this code below is wrong, but its to be used as reference
+						// auto select_node = make_uniq<SelectNode>();
+						// auto &select_list = select_node->select_list;
+						// for (auto &col : table.GetColumns().Physical()) {
+						// 	select_list.push_back(make_uniq<ColumnRefExpression>(col.Name(), table.name));
+						// }
+						// select_node->from_table = std::move(from_tbl);
+						//
+						// auto select_stmt = make_uniq<SelectStatement>();
+						// select_stmt->node = std::move(select_node);
+						//
+						// insert_stmt.select_statement = std::move(select_stmt);
+						// auto bound_insert = Bind(insert_stmt);
+						// auto insert_plan = std::move(bound_insert.plan);
 
-					} else if (bound_default->IsVolatile()) {
+					} else if (!bound_default->IsConsistent()) {
+						// Value constant_value;
+						// auto eval_success = ExpressionExecutor::TryEvaluateScalar(context, *bound_default, constant_value);
+						// // Insert the default Value.
+						// if (eval_success) {
+						// 	printf(constant_value.ToString().c_str());
+						// }
+						// (void)bound_default;
+
 						// ALTER TABLE t ADD COLUMN u <type> DEFAULT <constant> (by evaluating the expression)
-						// ALTER TABLE t ALTER u SET DEFAULT <expression>;
+						//TODO: Q: How to pass the default expression constant value? Not sure if its possible with the current fields of AlterInfo. Is this code enough?
+						nodes.push_back(std::move(make_uniq<LogicalSimple>(LogicalOperatorType::LOGICAL_ALTER, std::move(add_column_info.Copy()))));
 
+						// ALTER TABLE t ALTER u SET DEFAULT <expression>;
+						// SetDefaultInfo inherits from AlterInfo, so we can use it to make a LogicalSimple and push it do the nodes of our plan.
+						unique_ptr<SetDefaultInfo> alter_info_set_default_expression = make_uniq<SetDefaultInfo>(stmt.info->GetAlterEntryData(),stmt.info->name, add_column_info.new_column.DefaultValue().Copy()); //TODO: Q: We're making another copy here. Is that ok?
+						nodes.push_back(std::move(make_uniq<LogicalSimple>(LogicalOperatorType::LOGICAL_ALTER, std::move(alter_info_set_default_expression))));
 
 					}
+					result.plan =  UnionOperators(std::move(nodes));
+					return result;
 
-					// // Print the expression's value
-					// Value result_value;
-					// auto eval_success = ExpressionExecutor::TryEvaluateScalar(context, *bound_default, result_value);
-					// // Insert the default Value.
-					// if (eval_success) {
-					// 	std::cout << result_value.ToString();
-					// }
-					// (void)bound_default;
+
 				} catch (const BinderException &e) {
 					throw e; // rethrow the exception
 				}
