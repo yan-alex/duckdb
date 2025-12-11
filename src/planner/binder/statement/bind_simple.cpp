@@ -125,30 +125,35 @@ BoundStatement Binder::Bind(AlterStatement &stmt) {
 		    stmt.info->Cast<AlterTableInfo>().alter_table_type == AlterTableType::ADD_COLUMN) {
 			auto &add_column_info = stmt.info->Cast<AddColumnInfo>();
 			if (add_column_info.new_column.HasDefaultValue()) {
-				try {
-					vector<unique_ptr<LogicalOperator>> nodes;
+				unique_ptr<ParsedExpression> default_value = add_column_info.new_column.DefaultValue().Copy();
+				ExpressionBinder expr_binder(*this, context);
+				auto bound_default = expr_binder.Bind(default_value);
+				if (bound_default->IsVolatile() || !bound_default->IsConsistent()) {
+					try {
+						vector<unique_ptr<LogicalOperator>> nodes;
 
-					// ALTER TABLE t ADD COLUMN u <type> DEFAULT <constant> (by evaluating the expression)
-					// TODO: This is working but I don't know why. How are the wal replays matching the previous values?
-					// I don't really get it, since we're not really evaluating the expression.
-					nodes.push_back(std::move(make_uniq<LogicalSimple>(LogicalOperatorType::LOGICAL_ALTER,
-					                                                   std::move(add_column_info.Copy()))));
+						// ALTER TABLE t ADD COLUMN u <type> DEFAULT <constant> (by evaluating the expression)
+						// TODO: This is working but I don't know why. How are the wal replays matching the previous
+						// values? I don't really get it, since we're not really evaluating the expression.
+						nodes.push_back(std::move(make_uniq<LogicalSimple>(LogicalOperatorType::LOGICAL_ALTER,
+						                                                   std::move(add_column_info.Copy()))));
 
-					// ALTER TABLE t ALTER u SET DEFAULT <expression>;
-					AlterEntryData alter_entry_data = stmt.info->GetAlterEntryData();
-					auto col_name = add_column_info.new_column.GetName();
-					// SetDefaultInfo inherits from AlterInfo, so we can use it to make a LogicalSimple and push it do
-					// the nodes of our plan.
-					unique_ptr<SetDefaultInfo> alter_info_set_default_expression = make_uniq<SetDefaultInfo>(
-					    alter_entry_data, col_name, add_column_info.new_column.DefaultValue().Copy());
-					nodes.push_back(std::move(make_uniq<LogicalSimple>(LogicalOperatorType::LOGICAL_ALTER,
-					                                                   std::move(alter_info_set_default_expression))));
+						// ALTER TABLE t ALTER u SET DEFAULT <expression>;
+						AlterEntryData alter_entry_data = stmt.info->GetAlterEntryData();
+						auto col_name = add_column_info.new_column.GetName();
+						// SetDefaultInfo inherits from AlterInfo, so we can use it to make a LogicalSimple and push it
+						// do the nodes of our plan.
+						unique_ptr<SetDefaultInfo> alter_info_set_default_expression = make_uniq<SetDefaultInfo>(
+						    alter_entry_data, col_name, add_column_info.new_column.DefaultValue().Copy());
+						nodes.push_back(std::move(make_uniq<LogicalSimple>(
+						    LogicalOperatorType::LOGICAL_ALTER, std::move(alter_info_set_default_expression))));
 
-					result.plan = UnionOperators(std::move(nodes));
-					return result;
+						result.plan = UnionOperators(std::move(nodes));
+						return result;
 
-				} catch (const BinderException &e) {
-					throw e; // rethrow the exception
+					} catch (const BinderException &e) {
+						throw e; // rethrow the exception
+					}
 				}
 			}
 		}
