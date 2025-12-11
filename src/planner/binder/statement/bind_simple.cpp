@@ -120,94 +120,24 @@ BoundStatement Binder::Bind(AlterStatement &stmt) {
 	stmt.info->schema = entry->ParentSchema().name;
 
 	if (!stmt.info->IsAddPrimaryKey()) {
-		/* TODO:
-		 *		✅for an alter table - add column:
-		 *		✅bind the default expression
-		 *		✅check if it's inconsistent/volatile
-		 *		if so, create the different plans:
-		 *		-Volatile:
-		 *			- ALTER TABLE t ADD COLUMN u <type> DEFAULT NULL;
-		 *			- UPDATE t SET u = <expression>;
-		 *			- ALTER TABLE t ALTER u SET DEFAULT <expression>;
-		 *		-Inconsistent:
-		 *			- ALTER TABLE t ADD COLUMN u <type> DEFAULT <constant> (by evaluating the expression)
-		 *			- ALTER TABLE t ALTER u SET DEFAULT <expression>;
-		 */
-
-		// 📜 What default_expression types mean:
-		//! CONSISTENT              -> this function always returns the same result when given the same input, no variance
-		//! CONSISTENT_WITHIN_QUERY -> this function returns the same result WITHIN the same query/transaction
-		//!                            but the result might change across queries (e.g. NOW(), CURRENT_TIME)
-		//! VOLATILE                -> the result of this function might change per row (e.g. RANDOM())
-
 		auto &alter_table_info = stmt.info->Cast<AlterTableInfo>();
 		if (alter_table_info.alter_table_type == AlterTableType::ADD_COLUMN) {
 			auto &add_column_info = alter_table_info.Cast<AddColumnInfo>();
 			if (add_column_info.new_column.HasDefaultValue()) {
-				unique_ptr<ParsedExpression> default_value = add_column_info.new_column.DefaultValue().Copy();
-				// We have a default value, bind it
-				ExpressionBinder expr_binder(*this, context);
 				try {
-					auto bound_default = expr_binder.Bind(default_value);
-
 					vector<unique_ptr<LogicalOperator>> nodes;
 
 					// ALTER TABLE t ADD COLUMN u <type> DEFAULT <constant> (by evaluating the expression)
-					// TODO: This is working but I don't know why. How are the wal replays matching the previous values? I don't get it.
+					// TODO: This is working but I don't know why. How are the wal replays matching the previous values? I don't really get it, since we're not really evaluating the expression.
 					nodes.push_back(std::move(make_uniq<LogicalSimple>(LogicalOperatorType::LOGICAL_ALTER, std::move(add_column_info.Copy()))));
 
 					// ALTER TABLE t ALTER u SET DEFAULT <expression>;
-					// SetDefaultInfo inherits from AlterInfo, so we can use it to make a LogicalSimple and push it do the nodes of our plan.
 					AlterEntryData alter_entry_data = stmt.info->GetAlterEntryData();
 					auto col_name = add_column_info.new_column.GetName();
+					// SetDefaultInfo inherits from AlterInfo, so we can use it to make a LogicalSimple and push it do the nodes of our plan.
 					unique_ptr<SetDefaultInfo> alter_info_set_default_expression = make_uniq<SetDefaultInfo>(alter_entry_data, col_name, add_column_info.new_column.DefaultValue().Copy());
 					nodes.push_back(std::move(make_uniq<LogicalSimple>(LogicalOperatorType::LOGICAL_ALTER, std::move(alter_info_set_default_expression))));
 
-
-					// // Populate nodes
-					// if (bound_default->IsVolatile()) {
-					// 	// ALTER TABLE t ADD COLUMN u <type> DEFAULT NULL;
-					// 	// UPDATE t SET u = <expression>;
-					// 	// ALTER TABLE t ALTER u SET DEFAULT <expression>;
-					//
-					//
-					// 	// // FIXME: this code below is wrong, but its to be used as reference
-					// 	// auto select_node = make_uniq<SelectNode>();
-					// 	// auto &select_list = select_node->select_list;
-					// 	// for (auto &col : table.GetColumns().Physical()) {
-					// 	// 	select_list.push_back(make_uniq<ColumnRefExpression>(col.Name(), table.name));
-					// 	// }
-					// 	// select_node->from_table = std::move(from_tbl);
-					// 	//
-					// 	// auto select_stmt = make_uniq<SelectStatement>();
-					// 	// select_stmt->node = std::move(select_node);
-					// 	//
-					// 	// insert_stmt.select_statement = std::move(select_stmt);
-					// 	// auto bound_insert = Bind(insert_stmt);
-					// 	// auto insert_plan = std::move(bound_insert.plan);
-					//
-					// } else if (!bound_default->IsConsistent()) {
-					// 	// Value constant_value;
-					// 	// auto eval_success = ExpressionExecutor::TryEvaluateScalar(context, *bound_default, constant_value);
-					// 	// // Insert the default Value.
-					// 	// if (eval_success) {
-					// 	// 	printf(constant_value.ToString().c_str());
-					// 	// }
-					// 	// (void)bound_default;
-					//
-					// 	// ALTER TABLE t ADD COLUMN u <type> DEFAULT <constant> (by evaluating the expression)
-					// 	// TODO: This is working but I don't know why. How are the wal replays matching the previous values? I don't get it.
-					// 	nodes.push_back(std::move(make_uniq<LogicalSimple>(LogicalOperatorType::LOGICAL_ALTER, std::move(add_column_info.Copy()))));
-					//
-					// 	// ALTER TABLE t ALTER u SET DEFAULT <expression>;
-					// 	// SetDefaultInfo inherits from AlterInfo, so we can use it to make a LogicalSimple and push it do the nodes of our plan.
-					// 	AlterEntryData alter_entry_data = stmt.info->GetAlterEntryData();
-					// 	auto col_name = add_column_info.new_column.GetName();
-					// 	unique_ptr<SetDefaultInfo> alter_info_set_default_expression = make_uniq<SetDefaultInfo>(alter_entry_data, col_name, add_column_info.new_column.DefaultValue().Copy()); //TODO: Q: We're making another copy here. Is that ok?
-					// 	nodes.push_back(std::move(make_uniq<LogicalSimple>(LogicalOperatorType::LOGICAL_ALTER, std::move(alter_info_set_default_expression))));
-					//
-					//
-					// }
 					result.plan =  UnionOperators(std::move(nodes));
 					return result;
 
