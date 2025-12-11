@@ -15,6 +15,7 @@
 #include "duckdb/planner/operator/logical_create_index.hpp"
 #include "duckdb/planner/operator/logical_get.hpp"
 #include "duckdb/planner/operator/logical_simple.hpp"
+#include "fmt/format.h"
 
 namespace duckdb {
 
@@ -120,9 +121,9 @@ BoundStatement Binder::Bind(AlterStatement &stmt) {
 	stmt.info->schema = entry->ParentSchema().name;
 
 	if (!stmt.info->IsAddPrimaryKey()) {
-		auto &alter_table_info = stmt.info->Cast<AlterTableInfo>();
-		if (alter_table_info.alter_table_type == AlterTableType::ADD_COLUMN) {
-			auto &add_column_info = alter_table_info.Cast<AddColumnInfo>();
+		if (stmt.info->type == AlterType::ALTER_TABLE &&
+		    stmt.info->Cast<AlterTableInfo>().alter_table_type == AlterTableType::ADD_COLUMN) {
+			auto &add_column_info = stmt.info->Cast<AddColumnInfo>();
 			if (add_column_info.new_column.HasDefaultValue()) {
 				try {
 					vector<unique_ptr<LogicalOperator>> nodes;
