@@ -182,15 +182,19 @@ BoundStatement Binder::Bind(AlterStatement &stmt) {
 						// 	printf(constant_value.ToString().c_str());
 						// }
 						// (void)bound_default;
-
+						
 						// ALTER TABLE t ADD COLUMN u <type> DEFAULT <constant> (by evaluating the expression)
-						//TODO: Q: How to pass the default expression constant value? Not sure if its possible with the current fields of AlterInfo. Is this code enough?
-						nodes.push_back(std::move(make_uniq<LogicalSimple>(LogicalOperatorType::LOGICAL_ALTER, std::move(add_column_info.Copy()))));
+						auto parse_info = add_column_info.Copy();
+						nodes.push_back(std::move(make_uniq<LogicalSimple>(LogicalOperatorType::LOGICAL_ALTER, std::move(parse_info))));
 
 						// ALTER TABLE t ALTER u SET DEFAULT <expression>;
 						// SetDefaultInfo inherits from AlterInfo, so we can use it to make a LogicalSimple and push it do the nodes of our plan.
-						unique_ptr<SetDefaultInfo> alter_info_set_default_expression = make_uniq<SetDefaultInfo>(stmt.info->GetAlterEntryData(),stmt.info->name, add_column_info.new_column.DefaultValue().Copy()); //TODO: Q: We're making another copy here. Is that ok?
+						AlterEntryData alter_entry_data = stmt.info->GetAlterEntryData();
+						auto col_name = add_column_info.new_column.GetName();
+						auto new_default = add_column_info.new_column.DefaultValue().Copy();
+						unique_ptr<SetDefaultInfo> alter_info_set_default_expression = make_uniq<SetDefaultInfo>(alter_entry_data, col_name, new_default->Copy()); //TODO: Q: We're making another copy here. Is that ok?
 						nodes.push_back(std::move(make_uniq<LogicalSimple>(LogicalOperatorType::LOGICAL_ALTER, std::move(alter_info_set_default_expression))));
+
 
 					}
 					result.plan =  UnionOperators(std::move(nodes));
