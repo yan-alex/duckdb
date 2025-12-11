@@ -25,7 +25,22 @@ DETACH wal_replay;
 statement ok
 ATTACH '__TEST_DIR__/wal_replay.db';
 
-query I
-SELECT COUNT(*) != 0 FROM t JOIN original ON t.d = original.d;
+# query I
+# SELECT d FROM t
+# UNION ALL
+# SELECT d FROM original;
+# ----
+
+query I sort r1
+select d from t;
 ----
-true
+
+query I sort r1
+select d from original;
+----
+
+#
+# query I
+# SELECT COUNT(*) != 0 FROM t JOIN original ON t.d = original.d;
+# ----
+# true
