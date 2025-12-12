@@ -85,6 +85,8 @@ public:
 
 	LogicalType GetType() const;
 
+	unique_ptr<ParsedExpression> GetExpression() const;
+
 private:
 	//! The name of the entry
 	string name;

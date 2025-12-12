@@ -157,6 +157,9 @@ string ColumnDefinition::GetName() const {
 LogicalType ColumnDefinition::GetType() const {
 	return type;
 }
+unique_ptr<ParsedExpression> ColumnDefinition::GetExpression() const {
+	return expression->Copy();
+}
 
 void ColumnDefinition::SetGeneratedExpression(unique_ptr<ParsedExpression> new_expr) {
 	category = TableColumnType::GENERATED;

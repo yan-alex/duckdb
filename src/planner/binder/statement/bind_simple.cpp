@@ -121,30 +121,59 @@ BoundStatement Binder::Bind(AlterStatement &stmt) {
 	stmt.info->schema = entry->ParentSchema().name;
 
 	if (!stmt.info->IsAddPrimaryKey()) {
+		/* TODO:
+		 *		✅for an alter table - add column:
+		 *		✅bind the default expression
+		 *		✅check if it's inconsistent/volatile
+		 *		if so, create the different plans:
+		 *		-Volatile:
+		 *			- ALTER TABLE t ADD COLUMN u <type> DEFAULT NULL;
+		 *			- UPDATE t SET u = <expression>;
+		 *			- ALTER TABLE t ALTER u SET DEFAULT <expression>;
+		 *		-Inconsistent:
+		 *			- ALTER TABLE t ADD COLUMN u <type> DEFAULT <constant> (by evaluating the expression)
+		 *			- ALTER TABLE t ALTER u SET DEFAULT <expression>;
+		 */
+
+		// 📜 What default_expression types mean:
+		//! CONSISTENT              -> this function always returns the same result when given the same input, no variance
+		//! CONSISTENT_WITHIN_QUERY -> this function returns the same result WITHIN the same query/transaction
+		//!                            but the result might change across queries (e.g. NOW(), CURRENT_TIME)
+		//! VOLATILE                -> the result of this function might change per row (e.g. RANDOM())
+
 		if (stmt.info->type == AlterType::ALTER_TABLE &&
 		    stmt.info->Cast<AlterTableInfo>().alter_table_type == AlterTableType::ADD_COLUMN) {
 			auto &add_column_info = stmt.info->Cast<AddColumnInfo>();
-			if (add_column_info.new_column.HasDefaultValue()) {
-				unique_ptr<ParsedExpression> default_value = add_column_info.new_column.DefaultValue().Copy();
+			auto &new_column = add_column_info.new_column;
+			if (new_column.HasDefaultValue()) {
+				unique_ptr<ParsedExpression> default_value = new_column.DefaultValue().Copy();
 				ExpressionBinder expr_binder(*this, context);
 				auto bound_default = expr_binder.Bind(default_value);
-				if (bound_default->IsVolatile() || !bound_default->IsConsistent()) {
-					try {
-						vector<unique_ptr<LogicalOperator>> nodes;
 
+				vector<unique_ptr<LogicalOperator>> nodes;
+				if (!bound_default->IsConsistent()) {
+					try {
 						// ALTER TABLE t ADD COLUMN u <type> DEFAULT <constant> (by evaluating the expression)
-						// TODO: This is working but I don't know why. How are the wal replays matching the previous
-						// values? I don't really get it, since we're not really evaluating the expression.
+
+						Value constant_value;
+						auto eval_success = ExpressionExecutor::TryEvaluateScalar(context, *bound_default, constant_value);
+						//FIXME: Is an assert ok or do we want to fail fast here? TryEvaluateScalar() fails on internal
+						// exceptions already. If false gets returned, it must be something else.
+						D_ASSERT(eval_success);
+
+
+						auto new_expression = ConstantExpression(constant_value);
+						new_column.SetDefaultValue(make_uniq<ConstantExpression>(new_expression));
 						nodes.push_back(std::move(make_uniq<LogicalSimple>(LogicalOperatorType::LOGICAL_ALTER,
 						                                                   std::move(add_column_info.Copy()))));
 
 						// ALTER TABLE t ALTER u SET DEFAULT <expression>;
 						AlterEntryData alter_entry_data = stmt.info->GetAlterEntryData();
-						auto col_name = add_column_info.new_column.GetName();
+						auto col_name = new_column.GetName();
 						// SetDefaultInfo inherits from AlterInfo, so we can use it to make a LogicalSimple and push it
 						// do the nodes of our plan.
 						unique_ptr<SetDefaultInfo> alter_info_set_default_expression = make_uniq<SetDefaultInfo>(
-						    alter_entry_data, col_name, add_column_info.new_column.DefaultValue().Copy());
+						    alter_entry_data, col_name, new_column.DefaultValue().Copy());
 						nodes.push_back(std::move(make_uniq<LogicalSimple>(
 						    LogicalOperatorType::LOGICAL_ALTER, std::move(alter_info_set_default_expression))));
 
@@ -154,6 +183,10 @@ BoundStatement Binder::Bind(AlterStatement &stmt) {
 					} catch (const BinderException &e) {
 						throw e; // rethrow the exception
 					}
+				} else if (bound_default->IsVolatile()) {
+					// ALTER TABLE t ADD COLUMN u <type> DEFAULT NULL;
+					// UPDATE t SET u = <expression>;
+					// ALTER TABLE t ALTER u SET DEFAULT <expression>;
 				}
 			}
 		}
