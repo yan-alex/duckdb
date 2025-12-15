@@ -8,6 +8,7 @@
 #include "duckdb/parser/parsed_data/comment_on_column_info.hpp"
 #include "duckdb/parser/statement/alter_statement.hpp"
 #include "duckdb/parser/statement/transaction_statement.hpp"
+#include "duckdb/parser/statement/update_statement.hpp"
 #include "duckdb/parser/tableref/basetableref.hpp"
 #include "duckdb/planner/binder.hpp"
 #include "duckdb/planner/constraints/bound_unique_constraint.hpp"
@@ -15,6 +16,7 @@
 #include "duckdb/planner/operator/logical_create_index.hpp"
 #include "duckdb/planner/operator/logical_get.hpp"
 #include "duckdb/planner/operator/logical_simple.hpp"
+#include "duckdb/planner/operator/logical_update.hpp"
 #include "fmt/format.h"
 
 namespace duckdb {
@@ -71,6 +73,18 @@ BoundStatement Binder::BindAlterAddIndex(BoundStatement &result, CatalogEntry &e
 	result.plan = table.catalog.BindAlterAddIndex(*this, table, std::move(bound_table.plan),
 	                                              std::move(create_index_info), std::move(alter_table_info));
 	return std::move(result);
+}
+
+void ReinstateOriginalExpression(AlterStatement &stmt, string new_column_name,
+                                 unique_ptr<ParsedExpression> original_expression,
+                                 vector<unique_ptr<LogicalOperator>> &nodes) {
+	AlterEntryData alter_entry_data = stmt.info->GetAlterEntryData();
+	// SetDefaultInfo inherits from AlterInfo, so we can use it to make a LogicalSimple and push it
+	// do the nodes of our plan.
+	unique_ptr<SetDefaultInfo> alter_info_set_default_expression =
+	    make_uniq<SetDefaultInfo>(alter_entry_data, new_column_name, std::move(original_expression));
+	nodes.push_back(std::move(
+	    make_uniq<LogicalSimple>(LogicalOperatorType::LOGICAL_ALTER, std::move(alter_info_set_default_expression))));
 }
 
 BoundStatement Binder::Bind(AlterStatement &stmt) {
@@ -130,7 +144,7 @@ BoundStatement Binder::Bind(AlterStatement &stmt) {
 		 *			- ALTER TABLE t ADD COLUMN u <type> DEFAULT NULL;
 		 *			- UPDATE t SET u = <expression>;
 		 *			- ALTER TABLE t ALTER u SET DEFAULT <expression>;
-		 *		-Inconsistent:
+		 *		✅Inconsistent:
 		 *			- ALTER TABLE t ADD COLUMN u <type> DEFAULT <constant> (by evaluating the expression)
 		 *			- ALTER TABLE t ALTER u SET DEFAULT <expression>;
 		 */
@@ -151,43 +165,62 @@ BoundStatement Binder::Bind(AlterStatement &stmt) {
 				auto bound_default = expr_binder.Bind(default_value);
 
 				vector<unique_ptr<LogicalOperator>> nodes;
-				if (!bound_default->IsConsistent()) {
-					try {
-						// ALTER TABLE t ADD COLUMN u <type> DEFAULT <constant> (by evaluating the expression)
 
-						Value constant_value;
-						auto eval_success = ExpressionExecutor::TryEvaluateScalar(context, *bound_default, constant_value);
-						//FIXME: Is an assert ok or do we want to fail fast here? TryEvaluateScalar() fails on internal
-						// exceptions already. If false gets returned, it must be something else.
-						D_ASSERT(eval_success);
+				if (bound_default->IsVolatile()) {
+					// Keep a copy of the original expression before we change it, to be able to reinstate it at the end.
+					auto original_expression = new_column.GetExpression()->Copy();
 
+					// ALTER TABLE t ADD COLUMN col <type> DEFAULT NULL;
+					Value null_value = Value(nullptr);
+					auto new_expression = ConstantExpression(null_value);
+					new_column.SetDefaultValue(make_uniq<ConstantExpression>(new_expression));
+					nodes.push_back(make_uniq<LogicalSimple>(LogicalOperatorType::LOGICAL_ALTER,
+															add_column_info.Copy()));
+					// UPDATE t SET col = <expression>;
+					auto update_statement = make_uniq<UpdateStatement>();
+					auto &table_info = stmt.info->Cast<AlterTableInfo>();
 
-						auto new_expression = ConstantExpression(constant_value);
-						new_column.SetDefaultValue(make_uniq<ConstantExpression>(new_expression));
-						nodes.push_back(std::move(make_uniq<LogicalSimple>(LogicalOperatorType::LOGICAL_ALTER,
-						                                                   std::move(add_column_info.Copy()))));
+					auto table_ref = make_uniq<BaseTableRef>();
+					table_ref->catalog_name = table_info.catalog;
+					table_ref->schema_name = table_info.schema;
+					table_ref->table_name = table_info.name;
 
-						// ALTER TABLE t ALTER u SET DEFAULT <expression>;
-						AlterEntryData alter_entry_data = stmt.info->GetAlterEntryData();
-						auto col_name = new_column.GetName();
-						// SetDefaultInfo inherits from AlterInfo, so we can use it to make a LogicalSimple and push it
-						// do the nodes of our plan.
-						unique_ptr<SetDefaultInfo> alter_info_set_default_expression = make_uniq<SetDefaultInfo>(
-						    alter_entry_data, col_name, new_column.DefaultValue().Copy());
-						nodes.push_back(std::move(make_uniq<LogicalSimple>(
-						    LogicalOperatorType::LOGICAL_ALTER, std::move(alter_info_set_default_expression))));
+					update_statement->table = std::move(table_ref);
 
-						result.plan = UnionOperators(std::move(nodes));
-						return result;
+					auto set_info = make_uniq<UpdateSetInfo>();
+					set_info->columns.push_back(new_column.GetName());
+					set_info->expressions.push_back(original_expression->Copy());
+					update_statement->set_info = std::move(set_info);
 
-					} catch (const BinderException &e) {
-						throw e; // rethrow the exception
-					}
-				} else if (bound_default->IsVolatile()) {
-					// ALTER TABLE t ADD COLUMN u <type> DEFAULT NULL;
-					// UPDATE t SET u = <expression>;
-					// ALTER TABLE t ALTER u SET DEFAULT <expression>;
+					auto bound_update_statement = Bind(*update_statement);
+					nodes.push_back(std::move(bound_update_statement.plan));
+
+					// ALTER TABLE t ALTER col SET DEFAULT <expression>;
+					ReinstateOriginalExpression(stmt, new_column.GetName(), std::move(original_expression), nodes);
+				} else if (!bound_default->IsConsistent()) {
+					// Keep a copy of the original expression before we change it, to be able to reinstate it at the end.
+					auto original_expression = new_column.GetExpression()->Copy();
+
+					// ALTER TABLE t ADD COLUMN col <type> DEFAULT <constant> (by evaluating the expression)
+					Value constant_value;
+					auto eval_success = ExpressionExecutor::TryEvaluateScalar(context, *bound_default, constant_value);
+					//FIXME: Is an assert ok or do we want to fail fast here? TryEvaluateScalar() fails on internal
+					// exceptions already. If false gets returned, it must be something else.
+					D_ASSERT(eval_success);
+
+					auto new_expression = ConstantExpression(constant_value);
+					new_column.SetDefaultValue(make_uniq<ConstantExpression>(new_expression));
+					nodes.push_back(make_uniq<LogicalSimple>(LogicalOperatorType::LOGICAL_ALTER,
+					                                        add_column_info.Copy()));
+
+					// ALTER TABLE t ALTER col SET DEFAULT <expression>;
+					ReinstateOriginalExpression(stmt, new_column.GetName(), std::move(original_expression), nodes);
+				} else {
+					result.plan = make_uniq<LogicalSimple>(LogicalOperatorType::LOGICAL_ALTER, std::move(stmt.info));
+					return result;
 				}
+				result.plan = UnionOperators(std::move(nodes));
+				return result;
 			}
 		}
 
