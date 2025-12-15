@@ -1,0 +1,2 @@
+statement ok
+SELECT "-"(c1, c2) FROM test_vector_types(CAST(1 AS BIGNUM), CAST(1 AS BIGNUM)) AS test_vector_types(c1, c2);
