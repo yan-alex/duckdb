@@ -18,6 +18,7 @@ void Bignum::Verify(const bignum_t &input) {
 	auto bignum_ptr = input.data.GetData();
 	bool is_negative = (bignum_ptr[0] & 0x80) == 0;
 	uint32_t number_of_bytes = 0;
+	// TODO: According to https://github.com/duckdb/duckdb/pull/13015 "0111111 11111111 11111110 is the max possible header."
 	if (bignum_bytes == 4 && is_negative) {
 		// There is only one invalid value, which is -0
 		if (bignum_ptr[3] == static_cast<char>(0xFF)) {
@@ -35,6 +36,8 @@ void Bignum::Verify(const bignum_t &input) {
 		number_of_bytes |= static_cast<uint32_t>(bignum_ptr[1]) << 8 & 0xFF00;
 		number_of_bytes |= static_cast<uint32_t>(bignum_ptr[2]) & 0xFF;
 	}
+	printf("\nnumber_of_bytes: %d", number_of_bytes);
+	printf("\ninput.data string: %s", bignum_ptr);
 	//  No bytes between 4 and end can be 0, unless total size == 4
 	if (number_of_bytes > 1) {
 		if (is_negative) {

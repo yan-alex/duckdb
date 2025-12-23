@@ -339,6 +339,7 @@ void BignumSubtract(DataChunk &args, ExpressionState &state, Vector &result) {
 	    });
 }
 
+// This function is not being hit by my test
 void BignumNegate(DataChunk &args, ExpressionState &state, Vector &result) {
 	auto &allocator = state.GetAllocator();
 	ArenaAllocator arena(allocator);
@@ -681,6 +682,7 @@ ScalarFunction SubtractFunction::GetFunction(const LogicalType &type) {
 		ScalarFunction func("-", {type}, type, nullptr, DecimalNegateBind, nullptr, NegateBindStatistics);
 		return func;
 	} else if (type.id() == LogicalTypeId::BIGNUM) {
+		//TODO: This is werid. Why does is have "+" here? Shouldn't it be "-" ?
 		ScalarFunction func("+", {type}, LogicalType::BIGNUM, BignumNegate);
 		return func;
 	} else {

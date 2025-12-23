@@ -301,7 +301,7 @@ unique_ptr<GlobalTableFunctionState> TestVectorTypesInit(ClientContext &context,
 	}
 
 	TestVectorInfo info(bind_data.types, test_type_map, result->entries);
-	TestVectorFlat::Generate(info);
+	TestVectorFlat::Generate(info); // Generates our BIGNUM data
 	TestVectorConstant::Generate(info);
 	TestVectorDictionary::Generate(info);
 	TestVectorSequence::Generate(info);
