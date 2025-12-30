@@ -50,6 +50,11 @@ struct HTTPParams {
 	HTTPUtil &http_util;
 	shared_ptr<Logger> logger;
 
+	//! Overrides the current request method when set. E.g.:
+	//! We can do a PostRequestInfo , but if `custom_http_request_method` is set to 'GET',
+	//! the method sent will be 'GET' instead, even though it may have a request body as usual with POSTs.
+	string custom_http_request_method;
+
 public:
 	void Initialize(optional_ptr<FileOpener> opener);
 
@@ -209,6 +214,7 @@ struct DeleteRequestInfo : public BaseRequest {
 	}
 };
 
+// use this, and check HTTPParams.
 struct PostRequestInfo : public BaseRequest {
 	PostRequestInfo(const string &path, const HTTPHeaders &headers, HTTPParams &params, const_data_ptr_t buffer_in,
 	                idx_t buffer_in_len)
