@@ -12,11 +12,11 @@ CSVBufferManager::CSVBufferManager(ClientContext &context_p, const CSVReaderOpti
 	if (file_handle_p) {
 		file_handle = std::move(file_handle_p);
 	} else {
-		file_handle = ReadCSV::OpenCSV(file, options, context);
+		file_handle = ReadCSV::OpenCSV(file, options, context); // Leads to reading the length header
 	}
 	is_pipe = file_handle->IsPipe();
 	skip_rows = options.dialect_options.skip_rows.GetValue();
-	Initialize();
+	Initialize(); // Leads to throwing exception
 }
 
 void CSVBufferManager::UnpinBuffer(const idx_t cache_idx) {

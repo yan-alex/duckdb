@@ -66,7 +66,7 @@ private:
 	shared_ptr<CSVBuffer> last_buffer;
 	idx_t global_csv_pos = 0;
 	//! The size of the buffer, if the csv file has a smaller size than this, we will use that instead to malloc less
-	idx_t buffer_size;
+	idx_t buffer_size; // TODO:This ends up being 32000000. Where is it set?
 	//! If this buffer manager is done (i.e., no more buffers to read beyond the ones that were cached
 	bool done = false;
 	idx_t bytes_read = 0;

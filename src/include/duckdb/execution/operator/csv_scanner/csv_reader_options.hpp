@@ -117,7 +117,7 @@ struct CSVReaderOptions {
 	//! The file path of the CSV file to read
 	string file_path;
 	//! Buffer Size (Parallel Scan)
-	CSVOption<idx_t> buffer_size_option = CSVBuffer::ROWS_PER_BUFFER * max_line_size_default;
+	CSVOption<idx_t> buffer_size_option = CSVBuffer::ROWS_PER_BUFFER * max_line_size_default; // equals to 2000000*16 = 32000000
 	//! Decimal separator when reading as numeric
 	string decimal_separator = ".";
 	//! Whether  to pad rows that do not have enough columns with NULL values
