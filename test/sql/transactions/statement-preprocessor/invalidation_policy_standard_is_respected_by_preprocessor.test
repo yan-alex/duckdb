@@ -1,4 +1,4 @@
-# name: test/sql/transactions/statement-preprocessor/invalidation_policy_is_respected_by_preprocessor.test
+# name: test/sql/transactions/statement-preprocessor/invalidation_policy_standard_is_respected_by_preprocessor.test
 # group: [statement-preprocessor]
 
 statement ok

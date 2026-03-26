@@ -24,9 +24,9 @@ class StatementPreprocessor {
 public:
 	explicit StatementPreprocessor(ClientContext &context);
 	void Preprocess(ClientContextLock &lock, vector<unique_ptr<SQLStatement>> &statements,
-	                CurrentTransactionState transaction_context_state);
+	                const TransactionContext &transaction_context);
 	void PreprocessInternal(ClientContextLock &lock, vector<unique_ptr<SQLStatement>> &statements,
-	                        CurrentTransactionState transaction_context_state);
+	                        const TransactionContext &transaction_context);
 
 private:
 	ClientContext &context;

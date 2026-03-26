@@ -59,7 +59,7 @@ public:
 	void SetInvalidationPolicy(TransactionInvalidationPolicy new_invalidation_policy) {
 		invalidation_policy = new_invalidation_policy;
 	};
-	TransactionInvalidationPolicy GetInvalidationPolicy() {
+	TransactionInvalidationPolicy GetInvalidationPolicy() const {
 		return invalidation_policy;
 	};
 	void SetAutoRollback(bool new_auto_rollback) {

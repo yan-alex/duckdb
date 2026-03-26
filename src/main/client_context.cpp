@@ -718,9 +718,7 @@ vector<unique_ptr<SQLStatement>> ClientContext::ParseStatementsInternal(ClientCo
 
 		StatementPreprocessor preprocessor(*this);
 
-		const CurrentTransactionState transaction_context_state =
-		    transaction.HasActiveTransaction() ? IN_ACTIVE_TRANSACTION : NOT_IN_ACTIVE_TRANSACTION;
-		preprocessor.Preprocess(lock, parser.statements, transaction_context_state);
+		preprocessor.Preprocess(lock, parser.statements, transaction);
 
 		return std::move(parser.statements);
 	} catch (std::exception &ex) {
@@ -734,9 +732,7 @@ void ClientContext::PreprocessStatements(vector<unique_ptr<SQLStatement>> &state
 	auto lock = LockContext();
 
 	StatementPreprocessor preprocessor(*this);
-	const CurrentTransactionState transaction_context_state =
-	    transaction.HasActiveTransaction() ? IN_ACTIVE_TRANSACTION : NOT_IN_ACTIVE_TRANSACTION;
-	preprocessor.Preprocess(*lock, statements, transaction_context_state);
+	preprocessor.Preprocess(*lock, statements, transaction);
 }
 
 unique_ptr<LogicalOperator> ClientContext::ExtractPlan(const string &query) {
