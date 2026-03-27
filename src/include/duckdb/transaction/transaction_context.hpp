@@ -65,7 +65,7 @@ public:
 	void SetAutoRollback(bool new_auto_rollback) {
 		auto_rollback = new_auto_rollback;
 	};
-	bool GetAutoRollback() {
+	bool GetAutoRollback() const {
 		return auto_rollback;
 	};
 

@@ -41,5 +41,5 @@ commit;
 # results in invalid transaction
 statement error
 from t;
----
+----
 Rollback
