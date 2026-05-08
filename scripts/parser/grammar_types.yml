@@ -773,6 +773,7 @@ String:
     - ConstraintName
     - ExplainOptionName
     - OperatorLiteral
+    - SparkLocation
 
 Bool:
   type: "bool"
@@ -918,3 +919,5 @@ overrides:
   # update.gram
   UpdateSetElement: "pair<string, unique_ptr<ParsedExpression>>"
   UpdateSetColumnTarget: "string"
+  # spark
+  SparkUsing: "pair<string, string>"

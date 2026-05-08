@@ -89,28 +89,52 @@ unique_ptr<CreateStatement> PEGTransformerFactory::TransformCreateTableStmt(PEGT
 	return result;
 }
 
+string PEGTransformerFactory::TransformSparkLocation(PEGTransformer &transformer,
+																   ParseResult &parse_result) {
+	auto &list_pr = parse_result.Cast<ListParseResult>();
+	return transformer.Transform<string>(list_pr.GetChild(1));
+}
+
+pair<string, string> PEGTransformerFactory::TransformSparkUsing(PEGTransformer &transformer,
+																   ParseResult &parse_result) {
+	auto &list_pr = parse_result.Cast<ListParseResult>();
+	auto identifier = transformer.Transform<string>(list_pr.GetChild(1));
+	string location;
+	transformer.TransformOptional<string>(list_pr,2, location);
+
+	return  make_pair(identifier, location);
+}
+
 CreateTableAs PEGTransformerFactory::TransformCreateTableAs(PEGTransformer &transformer, ParseResult &parse_result) {
 	// CreateTableAs <- IdentifierList? PartitionSortedOptions? WithList? 'AS' SelectStatementInternal WithData?
-	// child 0: IdentifierList?
-	// child 1: PartitionSortedOptions?
-	// child 2: WithList?
-	// child 3: 'AS'
-	// child 4: Statement
-	// child 5: WithData?
+	// child 0: SparkUsing?
+	// child 1: IdentifierList?
+	// child 2: PartitionSortedOptions?
+	// child 3: WithList?
+	// child 4: 'AS'
+	// child 5: Statement
+	// child 6: WithData?
 	auto &list_pr = parse_result.Cast<ListParseResult>();
 	CreateTableAs result;
-	transformer.TransformOptional<ColumnList>(list_pr, 0, result.column_names);
+
+	auto &optional_using = list_pr.Child<OptionalParseResult>(0);
+	if (optional_using.HasResult()) {
+		// NOTE: We just ignore this for now. Not sure if we want to support it or not.
+		// throw NotImplementedException("USING not yet supported in Create statement");
+	}
+
+	transformer.TransformOptional<ColumnList>(list_pr, 1, result.column_names);
 	PartitionSortedOptions pso;
-	transformer.TransformOptional<PartitionSortedOptions>(list_pr, 1, pso);
+	transformer.TransformOptional<PartitionSortedOptions>(list_pr, 2, pso);
 	result.partition_keys = std::move(pso.partition_keys);
 	result.sort_keys = std::move(pso.sort_keys);
-	transformer.TransformOptional<case_insensitive_map_t<unique_ptr<ParsedExpression>>>(list_pr, 2, result.options);
-	auto stmt = transformer.Transform<unique_ptr<SQLStatement>>(list_pr.Child<ListParseResult>(4));
+	transformer.TransformOptional<case_insensitive_map_t<unique_ptr<ParsedExpression>>>(list_pr, 3, result.options);
+	auto stmt = transformer.Transform<unique_ptr<SQLStatement>>(list_pr.Child<ListParseResult>(5));
 	if (stmt->type != StatementType::SELECT_STATEMENT) {
 		throw ParserException("CREATE TABLE AS requires a SELECT clause");
 	}
 	result.select_statement = unique_ptr_cast<SQLStatement, SelectStatement>(std::move(stmt));
-	transformer.TransformOptional<bool>(list_pr, 5, result.with_data);
+	transformer.TransformOptional<bool>(list_pr, 6, result.with_data);
 	if (result.with_data) {
 		auto limit_modifier = make_uniq<LimitModifier>();
 		limit_modifier->limit = make_uniq<ConstantExpression>(0);
@@ -135,8 +159,9 @@ ColumnElements PEGTransformerFactory::TransformCreateColumnList(PEGTransformer &
                                                                 ParseResult &parse_result) {
 	// CreateColumnList <- Parens(CreateTableColumnList?) PartitionSortedOptions? WithList?
 	// child 0: Parens(CreateTableColumnList?)
-	// child 1: PartitionSortedOptions?
-	// child 2: WithList?
+	// child 1: SparkUsing
+	// child 2: PartitionSortedOptions?
+	// child 3: WithList?
 	auto &list_pr = parse_result.Cast<ListParseResult>();
 	auto &create_table_column_list =
 	    ExtractResultFromParens(list_pr.Child<ListParseResult>(0)).Cast<OptionalParseResult>();
@@ -144,11 +169,17 @@ ColumnElements PEGTransformerFactory::TransformCreateColumnList(PEGTransformer &
 		throw ParserException("Table must have at least one column!");
 	}
 	auto result = transformer.Transform<ColumnElements>(create_table_column_list.GetResult());
+
+	auto &optional_using = list_pr.Child<OptionalParseResult>(1);
+	if (optional_using.HasResult()) {
+		// NOTE: We just ignore this for now. Not sure if we want to support it or not.
+		// throw NotImplementedException("USING not yet supported in Create statement");
+	}
 	PartitionSortedOptions pso;
-	transformer.TransformOptional<PartitionSortedOptions>(list_pr, 1, pso);
+	transformer.TransformOptional<PartitionSortedOptions>(list_pr, 2, pso);
 	result.partition_keys = std::move(pso.partition_keys);
 	result.sort_keys = std::move(pso.sort_keys);
-	transformer.TransformOptional<case_insensitive_map_t<unique_ptr<ParsedExpression>>>(list_pr, 2, result.options);
+	transformer.TransformOptional<case_insensitive_map_t<unique_ptr<ParsedExpression>>>(list_pr, 3, result.options);
 	return result;
 }
 
