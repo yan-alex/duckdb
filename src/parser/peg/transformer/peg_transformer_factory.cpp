@@ -493,6 +493,7 @@ void PEGTransformerFactory::RegisterExpression() {
 	REGISTER_TRANSFORM(TransformLogicalOrExpression);
 	REGISTER_TRANSFORM(TransformLogicalAndExpression);
 	REGISTER_TRANSFORM(TransformLogicalNotExpression);
+	REGISTER_TRANSFORM(TransformSparkNotExpression);
 	REGISTER_TRANSFORM(TransformIsExpression);
 	REGISTER_TRANSFORM(TransformIsTest);
 	REGISTER_TRANSFORM(TransformIsLiteral);

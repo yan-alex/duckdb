@@ -668,6 +668,7 @@ private:
 	                                                                  ParseResult &parse_result);
 	static unique_ptr<ParsedExpression> TransformLogicalNotExpression(PEGTransformer &transformer,
 	                                                                  ParseResult &parse_result);
+	static unique_ptr<ParsedExpression> TransformSparkNotExpression(PEGTransformer &transformer, ParseResult &parse_result);
 	static unique_ptr<ParsedExpression> TransformIsExpression(PEGTransformer &transformer, ParseResult &parse_result);
 	static unique_ptr<ParsedExpression> TransformIsTest(PEGTransformer &transformer, ParseResult &parse_result);
 	static unique_ptr<ParsedExpression> TransformIsLiteral(PEGTransformer &transformer, ParseResult &parse_result);

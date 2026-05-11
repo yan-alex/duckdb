@@ -293,6 +293,7 @@ Expression:
     - LogicalOrExpression
     - LogicalAndExpression
     - LogicalNotExpression
+    - SparkNotExpression
     - IsExpression
     - IsTest
     - IsLiteral

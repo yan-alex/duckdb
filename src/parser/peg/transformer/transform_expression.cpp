@@ -652,6 +652,11 @@ unique_ptr<ParsedExpression> PEGTransformerFactory::TransformLogicalNotExpressio
 	return expr;
 }
 
+unique_ptr<ParsedExpression> PEGTransformerFactory::TransformSparkNotExpression(PEGTransformer &transformer,
+																   ParseResult &parse_result) {
+	return transformer.Transform<unique_ptr<ParsedExpression>>(parse_result);
+}
+
 // IsExpression <- IsDistinctFromExpression IsTest*
 unique_ptr<ParsedExpression> PEGTransformerFactory::TransformIsExpression(PEGTransformer &transformer,
                                                                           ParseResult &parse_result) {
