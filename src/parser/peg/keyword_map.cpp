@@ -484,12 +484,14 @@ void PEGKeywordHelper::InitializeKeywordMaps() { // Renamed for clarity
 	typefunc_keyword_map.insert("columns");
 	typefunc_keyword_map.insert("concurrently");
 	typefunc_keyword_map.insert("cross");
+	typefunc_keyword_map.insert("float");
 	typefunc_keyword_map.insert("freeze");
 	typefunc_keyword_map.insert("full");
 	typefunc_keyword_map.insert("generated");
 	typefunc_keyword_map.insert("glob");
 	typefunc_keyword_map.insert("ilike");
 	typefunc_keyword_map.insert("inner");
+	typefunc_keyword_map.insert("int");
 	typefunc_keyword_map.insert("is");
 	typefunc_keyword_map.insert("isnull");
 	typefunc_keyword_map.insert("join");

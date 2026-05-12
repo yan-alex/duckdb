@@ -628,12 +628,14 @@ FuncNameKeyword <- 'ASOF' /
 'COLLATION' /
 'CONCURRENTLY' /
 'CROSS' /
+'FLOAT' /
 'FREEZE' /
 'FULL' /
 'GENERATED' /
 'GLOB' /
 'ILIKE' /
 'INNER' /
+'INT' /
 'IS' /
 'ISNULL' /
 'JOIN' /
