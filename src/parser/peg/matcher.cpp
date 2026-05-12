@@ -5,6 +5,7 @@
 // uncomment to dynamically read the PEG parser from a file instead of compiling it in (useful for testing)
 // #define PEG_PARSER_SOURCE_FILE "duckdb/parser/peg/inlined_grammar.gram"
 
+#include "duckdb/spark_compat.h"
 #include "duckdb/common/printer.hpp"
 #include "duckdb/common/string_map_set.hpp"
 #include "duckdb/common/types/string_type.hpp"
@@ -764,6 +765,10 @@ public:
 			return MatchResultType::FAIL;
 		}
 		state.tokens[state.token_index - 1].type = TokenType::NUMBER_LITERAL;
+		if (state.token_index < state.tokens.size() && SparkCompatUtils::IsSparkPostfixToken(state.tokens[state.token_index].text)) {
+			state.UpdateMaxTokenIndex();
+			state.token_index++;
+		}
 		return MatchResultType::SUCCESS;
 	}
 
@@ -771,12 +776,17 @@ public:
 		if (state.token_index >= state.tokens.size()) {
 			return nullptr;
 		}
-		auto &token_text = state.tokens[state.token_index].text;
+		auto number_text = state.tokens[state.token_index].text;
 		auto start_offset = optional_idx(state.tokens[state.token_index].offset);
 		if (!MatchNumberLiteral(state)) {
 			return nullptr;
 		}
-		auto result = state.allocator.Allocate(make_uniq<NumberParseResult>(token_text, start_offset));
+		if (state.token_index < state.tokens.size() && SparkCompatUtils::IsSparkPostfixToken(state.tokens[state.token_index].text)) {
+			number_text = number_text + state.tokens[state.token_index].text;
+			state.UpdateMaxTokenIndex();
+			state.token_index++;
+		}
+		auto result = state.allocator.Allocate(make_uniq<NumberParseResult>(number_text, start_offset));
 		result->name = name;
 		return result;
 	}
@@ -810,9 +820,9 @@ private:
 			if (scientific_notation && (token_text[i] == '+' || token_text[i] == '-')) {
 				continue;
 			}
-			if (!BaseTokenizer::CharacterIsNumber(token_text[i])) {
-				return false;
-			}
+			// if (!BaseTokenizer::CharacterIsNumber(token_text[i])) {
+			// 	return false;
+			// }
 		}
 		state.token_index++;
 		state.UpdateMaxTokenIndex();

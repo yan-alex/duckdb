@@ -1,3 +1,4 @@
+#include "duckdb/spark_compat.h"
 #include "duckdb/common/extra_type_info.hpp"
 #include "duckdb/common/operator/cast_operators.hpp"
 #include "duckdb/common/types/decimal.hpp"
@@ -462,6 +463,94 @@ unique_ptr<ParsedExpression> PEGTransformerFactory::TryNegateValue(const Constan
 	}
 }
 
+unique_ptr<ParsedExpression> CastSparkNumberWithPostfix(string &str) {
+	auto postfix = std::toupper(str[str.size()-1]);
+	auto number_str = str.substr(0, str.size()-1);
+	string_t number_str_val(number_str);
+	switch (postfix) {
+		case 'L': {
+			int64_t bigint_value = Cast::Operation<string_t, int64_t>(number_str_val);
+			return make_uniq<ConstantExpression>(Value::BIGINT(bigint_value));
+		}
+		case 'S': {
+			int16_t smallint_value = Cast::Operation<string_t, int16_t>(number_str_val);
+			return make_uniq<ConstantExpression>(Value::SMALLINT(smallint_value));
+		}
+		case 'Y': {
+			int8_t tinyint_value = Cast::Operation<string_t, int8_t>(number_str_val);
+			return make_uniq<ConstantExpression>(Value::TINYINT(tinyint_value));
+		}
+		case 'D': {
+			if (std::toupper(str[str.size() - 2]) == 'B') {
+				auto number_str_bd = str.substr(0, str.size() - 2);
+
+				uint8_t total_digits = 0;
+				uint8_t digits_after_dot = 0;
+				bool found_dot = false;
+				int exponent = 0;
+
+				// Split mantissa and exponent
+				auto e_pos = number_str_bd.find_first_of("eE");
+				string mantissa = (e_pos != string::npos) ? number_str_bd.substr(0, e_pos) : number_str_bd;
+				if (e_pos != string::npos) {
+					exponent = std::stoi(number_str_bd.substr(e_pos + 1));
+				}
+
+				for (auto c : mantissa) {
+					if (c >= '0' && c <= '9') {
+						total_digits++;
+						if (found_dot) {
+							digits_after_dot++;
+						}
+					} else if (c == '.') {
+						found_dot = true;
+					}
+				}
+
+				// Exponent shifts the decimal point: positive exponent = fewer digits after dot
+				int scale = static_cast<int>(digits_after_dot) - exponent;
+				if (scale < 0) {
+					total_digits += static_cast<uint8_t>(-scale);
+					scale = 0;
+				}
+				uint8_t width = total_digits < 1 ? 1 : total_digits;
+
+				auto val = Value(number_str_bd).DefaultCastAs(LogicalType::DECIMAL(width, static_cast<uint8_t>(scale)));
+				return make_uniq<ConstantExpression>(std::move(val));
+			}
+			double double_value = Cast::Operation<string_t, double>(number_str_val);
+			return make_uniq<ConstantExpression>(Value::DOUBLE(double_value));
+		}
+		case 'F': {
+			float float_value = Cast::Operation<string_t, float>(number_str_val);
+			return make_uniq<ConstantExpression>(Value::FLOAT(float_value));
+		}
+	    default: return nullptr;
+	}
+}
+
+
+
+bool IsSparkPostfix(const string &str) {
+	// The number token must contain at least one digit before the postfix.
+	bool has_digit = false;
+	for (idx_t j = 0; j < str.size(); j++) {
+		if (StringUtil::CharacterIsDigit(str[j])) {
+			has_digit = true;
+			break;
+		}
+	}
+	if (!has_digit) {
+		return false;
+	}
+	auto c = std::toupper(str[str.size()-1]);
+	// 'D' completing a 'BD' pair — the 'B' was already validated on the previous call.
+	if (c == 'D' && std::toupper(str[str.size()-2]) == 'B') {
+		return true;
+	}
+	return SparkCompatUtils::IsSparkPostfixToken(&str[str.size()-1]);
+}
+
 unique_ptr<ParsedExpression> PEGTransformerFactory::ConvertNumberToValue(string val) {
 	string_t str_val(val);
 	bool try_cast_as_integer = true;
@@ -485,6 +574,10 @@ unique_ptr<ParsedExpression> PEGTransformerFactory::ConvertNumberToValue(string 
 			if (!decimal_position.IsValid()) {
 				num_integer_underscores++;
 			}
+		}
+
+		if (IsSparkPostfix(val)) {
+			return CastSparkNumberWithPostfix(val);
 		}
 	}
 	if (try_cast_as_integer) {
