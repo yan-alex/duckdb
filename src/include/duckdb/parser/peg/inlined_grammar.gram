@@ -625,9 +625,13 @@ FuncNameKeyword <- 'ASOF' /
 'AT' /
 'AUTHORIZATION' /
 'BINARY' /
+'BIGINT' /
+'BOOLEAN' /
 'COLLATION' /
 'CONCURRENTLY' /
 'CROSS' /
+'DECIMAL' /
+'DOUBLE' /
 'FLOAT' /
 'FREEZE' /
 'FULL' /
@@ -649,8 +653,10 @@ FuncNameKeyword <- 'ASOF' /
 'POSITIONAL' /
 'RIGHT' /
 'SIMILAR' /
+'SMALLINT' /
 'STRUCT' /
 'TABLESAMPLE' /
+'TINYINT' /
 'VERBOSE'
 TypeNameKeyword <- 'ASOF' /
 'AT' /
@@ -661,6 +667,7 @@ TypeNameKeyword <- 'ASOF' /
 'COLUMNS' /
 'CONCURRENTLY' /
 'CROSS' /
+'DOUBLE' /
 'FREEZE' /
 'FULL' /
 'GLOB' /
@@ -680,6 +687,7 @@ TypeNameKeyword <- 'ASOF' /
 'UNPACK' /
 'SIMILAR' /
 'TABLESAMPLE' /
+'TINYINT' /
 'TRY_CAST' /
 'VERBOSE' /
 'SEMI' /

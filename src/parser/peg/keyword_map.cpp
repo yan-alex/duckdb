@@ -478,12 +478,16 @@ void PEGKeywordHelper::InitializeKeywordMaps() { // Renamed for clarity
 	typefunc_keyword_map.insert("asof");
 	typefunc_keyword_map.insert("at");
 	typefunc_keyword_map.insert("authorization");
+	typefunc_keyword_map.insert("bigint");
 	typefunc_keyword_map.insert("binary");
+	typefunc_keyword_map.insert("boolean");
 	typefunc_keyword_map.insert("by");
 	typefunc_keyword_map.insert("collation");
 	typefunc_keyword_map.insert("columns");
 	typefunc_keyword_map.insert("concurrently");
 	typefunc_keyword_map.insert("cross");
+	typefunc_keyword_map.insert("decimal");
+	typefunc_keyword_map.insert("double");
 	typefunc_keyword_map.insert("float");
 	typefunc_keyword_map.insert("freeze");
 	typefunc_keyword_map.insert("full");
@@ -506,8 +510,10 @@ void PEGKeywordHelper::InitializeKeywordMaps() { // Renamed for clarity
 	typefunc_keyword_map.insert("right");
 	typefunc_keyword_map.insert("semi");
 	typefunc_keyword_map.insert("similar");
+	typefunc_keyword_map.insert("smallint");
 	typefunc_keyword_map.insert("struct");
 	typefunc_keyword_map.insert("tablesample");
+	typefunc_keyword_map.insert("tinyint");
 	typefunc_keyword_map.insert("try_cast");
 	typefunc_keyword_map.insert("unpack");
 	typefunc_keyword_map.insert("verbose");
@@ -523,6 +529,7 @@ void PEGKeywordHelper::InitializeKeywordMaps() { // Renamed for clarity
 	typename_keyword_map.insert("columns");
 	typename_keyword_map.insert("concurrently");
 	typename_keyword_map.insert("cross");
+	typename_keyword_map.insert("double");
 	typename_keyword_map.insert("freeze");
 	typename_keyword_map.insert("full");
 	typename_keyword_map.insert("glob");
@@ -542,6 +549,7 @@ void PEGKeywordHelper::InitializeKeywordMaps() { // Renamed for clarity
 	typename_keyword_map.insert("semi");
 	typename_keyword_map.insert("similar");
 	typename_keyword_map.insert("tablesample");
+	typename_keyword_map.insert("tinyint");
 	typename_keyword_map.insert("try_cast");
 	typename_keyword_map.insert("unpack");
 	typename_keyword_map.insert("verbose");
