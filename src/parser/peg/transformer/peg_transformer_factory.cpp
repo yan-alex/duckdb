@@ -333,6 +333,7 @@ void PEGTransformerFactory::RegisterCreateTable() {
 	REGISTER_TRANSFORM(TransformCreateStatementVariation);
 	REGISTER_TRANSFORM(TransformCreateTableStmt);
 	REGISTER_TRANSFORM(TransformSparkLocation);
+	REGISTER_TRANSFORM(TransformDottedSettingIdentifier);
 	REGISTER_TRANSFORM(TransformSparkUsing);
 	REGISTER_TRANSFORM(TransformCreateTableAs);
 	REGISTER_TRANSFORM(TransformIdentifierList);

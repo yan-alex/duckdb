@@ -512,6 +512,7 @@ private:
 	                                                                     ParseResult &parse_result);
 	static unique_ptr<CreateStatement> TransformCreateTableStmt(PEGTransformer &transformer, ParseResult &parse_result);
 	static string TransformSparkLocation(PEGTransformer &transformer, ParseResult &parse_result);
+	static string TransformDottedSettingIdentifier(PEGTransformer &transformer, ParseResult &parse_result);
 	static pair<string ,string> TransformSparkUsing(PEGTransformer &transformer, ParseResult &parse_result);
 	static CreateTableAs TransformCreateTableAs(PEGTransformer &transformer, ParseResult &parse_result);
 	static ColumnList TransformIdentifierList(PEGTransformer &transformer, ParseResult &parse_result);

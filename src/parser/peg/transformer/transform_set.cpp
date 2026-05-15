@@ -25,13 +25,24 @@ vector<unique_ptr<ParsedExpression>> PEGTransformerFactory::TransformSetAssignme
 	return transformer.Transform<vector<unique_ptr<ParsedExpression>>>(list_pr, 1);
 }
 
-// SetSetting <- SettingScope? SettingName
+// SetSetting <- DottedSettingIdentifier / SettingScope? SettingName
 SettingInfo PEGTransformerFactory::TransformSetSetting(PEGTransformer &transformer, ParseResult &parse_result) {
 	auto &list_pr = parse_result.Cast<ListParseResult>();
-	auto &optional_scope_pr = list_pr.Child<OptionalParseResult>(0);
+	auto &choice_pr = list_pr.Child<ChoiceParseResult>(0);
+	auto &result_pr = choice_pr.GetResult();
+
+	if (result_pr.name == "DottedSettingIdentifier") {
+		SettingInfo result;
+		result.name = transformer.Transform<string>(result_pr);
+		return result;
+	}
+
+	// SettingScope? SettingName
+	auto &seq_pr = result_pr.Cast<ListParseResult>();
+	auto &optional_scope_pr = seq_pr.Child<OptionalParseResult>(0);
 
 	SettingInfo result;
-	result.name = list_pr.Child<IdentifierParseResult>(1).identifier;
+	result.name = seq_pr.Child<IdentifierParseResult>(1).identifier;
 	if (optional_scope_pr.HasResult()) {
 		auto &setting_scope = optional_scope_pr.GetResult().Cast<ListParseResult>();
 		auto &scope_value = setting_scope.Child<ChoiceParseResult>(0);
@@ -145,5 +156,20 @@ vector<unique_ptr<ParsedExpression>> PEGTransformerFactory::TransformVariableLis
 		expressions.push_back(transformer.Transform<unique_ptr<ParsedExpression>>(expr));
 	}
 	return expressions;
+}
+
+// DottedSettingIdentifier <- Identifier ('.' Identifier)+
+string PEGTransformerFactory::TransformDottedSettingIdentifier(PEGTransformer &transformer,
+                                                               ParseResult &parse_result) {
+	auto &list_pr = parse_result.Cast<ListParseResult>();
+	string result = list_pr.Child<IdentifierParseResult>(0).identifier;
+
+	auto &repeat_elements = list_pr.Child<RepeatParseResult>(1);
+	for (auto &child_ref : repeat_elements.GetChildren()) {
+		auto &sub_list = child_ref.get().Cast<ListParseResult>();
+		result += ".";
+		result += sub_list.GetChild(1).Cast<IdentifierParseResult>().identifier;
+	}
+	return result;
 }
 } // namespace duckdb

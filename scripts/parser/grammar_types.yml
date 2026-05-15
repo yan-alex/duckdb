@@ -775,6 +775,7 @@ String:
     - ExplainOptionName
     - OperatorLiteral
     - SparkLocation
+    - DottedSettingIdentifier
 
 Bool:
   type: "bool"

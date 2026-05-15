@@ -1439,7 +1439,9 @@ ZoneValue <- ZoneIntervalWithPrecision / ZoneIntervalWithInterval / 'LOCAL' / 'D
 ZoneIntervalWithInterval <- 'INTERVAL' StringLiteral Interval?
 ZoneIntervalWithPrecision <- 'INTERVAL' Parens(NumberLiteral) StringLiteral
 
-SetSetting <- SettingScope? SettingName
+SetSetting <- DottedSettingIdentifier / (SettingScope? SettingName)
+DottedSettingIdentifier <- Identifier ('.' Identifier)+
+
 SetVariable <- VariableScope Identifier
 VariableScope <- 'VARIABLE'
 
