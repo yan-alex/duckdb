@@ -441,6 +441,45 @@ public:
 		return false;
 	}
 
+	bool IsBacktickQuoted(const string &text) const {
+		if (text.size() >= 3 && text.front() == '`' && text.back() == '`') {
+			return true;
+		}
+		return false;
+	}
+
+	//! Check if the current position starts a backtick-quoted identifier sequence: ` ... `
+	static bool IsBacktickSequence(MatchState &state) {
+		if (state.token_index >= state.tokens.size() || state.tokens[state.token_index].text != "`") {
+			return false;
+		}
+		// Scan forward for the closing backtick
+		for (idx_t i = state.token_index + 2; i < state.tokens.size(); i++) {
+			if (state.tokens[i].text == "`") {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	//! Consume all tokens from opening ` through closing `, returning the concatenated inner text
+	static string ConsumeBacktickSequence(MatchState &state) {
+		// state.token_index points at opening `
+		idx_t start = state.token_index + 1;
+		string result;
+		for (idx_t i = start; i < state.tokens.size(); i++) {
+			if (state.tokens[i].text == "`") {
+				// Found closing backtick
+				state.token_index = i + 1;
+				state.UpdateMaxTokenIndex();
+				return result;
+			}
+			result += state.tokens[i].text;
+		}
+		// Should not reach here if IsBacktickSequence returned true
+		return result;
+	}
+
 	bool IsSingleQuoted(const string &text) const {
 		if (text.front() == '\'' && text.back() == '\'') {
 			return true;
@@ -458,10 +497,18 @@ public:
 		if (IsQuoted(text)) {
 			return true;
 		}
+		if (IsBacktickQuoted(text)) {
+			return true;
+		}
 		return BaseTokenizer::CharacterIsKeyword(text[0]);
 	}
 
 	MatchResultType Match(MatchState &state) const override {
+		if (IsBacktickSequence(state)) {
+			ConsumeBacktickSequence(state);
+			state.tokens[state.token_index - 1].type = GetTokenType();
+			return MatchResultType::SUCCESS;
+		}
 		if (!MatchIdentifier(state)) {
 			return MatchResultType::FAIL;
 		}
@@ -473,6 +520,14 @@ public:
 		if (state.token_index >= state.tokens.size()) {
 			return nullptr;
 		}
+
+		// Handle backtick-quoted identifier: ` ... `
+		if (IsBacktickSequence(state)) {
+			auto start_offset = optional_idx(state.tokens[state.token_index].offset);
+			string result_text = ConsumeBacktickSequence(state);
+			return state.allocator.Allocate(make_uniq<IdentifierParseResult>(result_text, start_offset));
+		}
+
 		const auto &token_text = state.tokens[state.token_index].text;
 		auto start_offset = optional_idx(state.tokens[state.token_index].offset);
 		if (!MatchIdentifier(state)) {
@@ -633,6 +688,11 @@ public:
 	}
 
 	MatchResultType Match(MatchState &state) const override {
+		if (IsBacktickSequence(state)) {
+			ConsumeBacktickSequence(state);
+			state.tokens[state.token_index - 1].type = GetTokenType();
+			return MatchResultType::SUCCESS;
+		}
 		if (!MatchReservedIdentifier(state)) {
 			return MatchResultType::FAIL;
 		}
@@ -644,6 +704,14 @@ public:
 		if (state.token_index >= state.tokens.size()) {
 			return nullptr;
 		}
+
+		// Handle backtick-quoted identifier: ` ... `
+		if (IsBacktickSequence(state)) {
+			auto start_offset = optional_idx(state.tokens[state.token_index].offset);
+			string result_text = ConsumeBacktickSequence(state);
+			return state.allocator.Allocate(make_uniq<IdentifierParseResult>(result_text, start_offset));
+		}
+
 		auto &token_text = state.tokens[state.token_index].text;
 		auto start_offset = optional_idx(state.tokens[state.token_index].offset);
 		if (!MatchReservedIdentifier(state)) {
@@ -741,7 +809,7 @@ private:
 		idx_t open_quote_idx = string_info.prefix_len - 1;
 		idx_t min_len = string_info.prefix_len + 1;
 
-		if (token_text.size() >= min_len && token_text[open_quote_idx] == '\'' && token_text.back() == '\'') {
+		if (token_text.size() >= min_len && (token_text[open_quote_idx] == '\'' && token_text.back() == '\'') || (token_text[open_quote_idx] == '"' && token_text.back() == '"')) {
 			state.token_index++;
 			state.UpdateMaxTokenIndex();
 			return true;
