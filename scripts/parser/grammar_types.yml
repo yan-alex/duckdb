@@ -91,6 +91,8 @@ SelectStatement:
     - SimpleSelect
     - EnumSelectType
     - ValuesClause
+    - ValuesClauseWithAlias
+    - ValuesClauseNoParens
     - TableStatement
 
 SetStatement:

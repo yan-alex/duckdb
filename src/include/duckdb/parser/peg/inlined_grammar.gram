@@ -1247,7 +1247,7 @@ SetopUnion <- 'UNION'
 SetopExcept <- 'EXCEPT'
 ByName <- 'BY' 'NAME'
 
-SelectStatementType <- OptionalParensSimpleSelect / ValuesClause / DescribeStatement / TableStatement / PivotStatement / UnpivotStatement
+SelectStatementType <- OptionalParensSimpleSelect / ValuesClauseWithAlias / ValuesClause / DescribeStatement / TableStatement / PivotStatement / UnpivotStatement
 ResultModifiers <- OrderByClause? LimitOffset?
 LimitOffset <- LimitOffsetClause / OffsetLimitClause
 LimitOffsetClause <- LimitClause OffsetClause?
@@ -1404,6 +1404,8 @@ ExpressionAsCollabel <- Expression 'AS' ColLabelOrString
 ExpressionOptIdentifier <- Expression Identifier?
 
 ValuesClause <- 'VALUES' List(ValuesExpressions)
+ValuesClauseNoParens <- 'VALUES' Expression
+ValuesClauseWithAlias <- (ValuesClause / ValuesClauseNoParens) TableAlias
 ValuesExpressions <- Parens(List(Expression))
 
 TransactionStatement <- BeginTransaction / RollbackTransaction / CommitTransaction

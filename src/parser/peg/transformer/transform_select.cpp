@@ -1165,6 +1165,41 @@ unique_ptr<SelectStatement> PEGTransformerFactory::TransformValuesClause(PEGTran
 	return select_statement;
 }
 
+unique_ptr<SelectStatement> PEGTransformerFactory::TransformValuesClauseNoParens(PEGTransformer &transformer,
+																   ParseResult &parse_result) {
+	auto &list_pr = parse_result.Cast<ListParseResult>();
+
+	auto expression = transformer.Transform<unique_ptr<ParsedExpression>>(list_pr.Child<ListParseResult>(1));
+
+	auto result = make_uniq<ExpressionListRef>();
+	result->alias = "valueslist";
+	result->values = vector<vector<unique_ptr<ParsedExpression>>>();
+	result->values.push_back(vector<unique_ptr<ParsedExpression>>());
+	result->values[0].push_back(std::move(expression));
+
+	auto select_node = make_uniq<SelectNode>();
+	select_node->from_table = std::move(result);
+	select_node->select_list.push_back(make_uniq<StarExpression>());
+
+	auto select_statement = make_uniq<SelectStatement>();
+	select_statement->node = std::move(select_node);
+	return select_statement;
+}
+
+unique_ptr<SelectStatement> PEGTransformerFactory::TransformValuesClauseWithAlias(PEGTransformer &transformer,
+                                                                                  ParseResult &parse_result) {
+	auto &list_pr = parse_result.Cast<ListParseResult>();
+	auto &inner_list = list_pr.GetChild(0).Cast<ListParseResult>();
+	auto select_statement =
+	    transformer.Transform<unique_ptr<SelectStatement>>(inner_list.Child<ChoiceParseResult>(0).GetResult());
+	auto table_alias = transformer.Transform<TableAlias>(list_pr.Child<ListParseResult>(1));
+	auto &select_node = select_statement->node->Cast<SelectNode>();
+	auto &expr_list_ref = select_node.from_table->Cast<ExpressionListRef>();
+	expr_list_ref.alias = table_alias.name;
+	expr_list_ref.expected_names = std::move(table_alias.column_name_alias);
+	return select_statement;
+}
+
 vector<unique_ptr<ParsedExpression>> PEGTransformerFactory::TransformValuesExpressions(PEGTransformer &transformer,
                                                                                        ParseResult &parse_result) {
 	auto &list_pr = parse_result.Cast<ListParseResult>();

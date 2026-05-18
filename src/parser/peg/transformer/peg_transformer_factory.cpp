@@ -838,6 +838,8 @@ void PEGTransformerFactory::RegisterSelect() {
 	REGISTER_TRANSFORM(TransformAtUnit);
 	REGISTER_TRANSFORM(TransformValuesRef);
 	REGISTER_TRANSFORM(TransformValuesClause);
+	REGISTER_TRANSFORM(TransformValuesClauseNoParens);
+	REGISTER_TRANSFORM(TransformValuesClauseWithAlias);
 	REGISTER_TRANSFORM(TransformValuesExpressions);
 	REGISTER_TRANSFORM(TransformTableStatement);
 	REGISTER_TRANSFORM(TransformParensTableRef);
