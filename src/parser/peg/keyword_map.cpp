@@ -475,6 +475,7 @@ void PEGKeywordHelper::InitializeKeywordMaps() { // Renamed for clarity
 
 	// Populating typefunc_keyword_map
 	typefunc_keyword_map.insert("anti");
+	typefunc_keyword_map.insert("array");
 	typefunc_keyword_map.insert("asof");
 	typefunc_keyword_map.insert("at");
 	typefunc_keyword_map.insert("authorization");
