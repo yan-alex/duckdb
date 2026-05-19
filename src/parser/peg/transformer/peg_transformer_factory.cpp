@@ -243,6 +243,7 @@ void PEGTransformerFactory::RegisterCommon() {
 	REGISTER_TRANSFORM(TransformUnionType);
 	REGISTER_TRANSFORM(TransformColIdTypeList);
 	REGISTER_TRANSFORM(TransformColIdType);
+	REGISTER_TRANSFORM(TransformColIdColonType);
 	REGISTER_TRANSFORM(TransformBitType);
 	REGISTER_TRANSFORM(TransformIntervalType);
 	REGISTER_TRANSFORM(TransformIntervalInterval);

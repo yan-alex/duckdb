@@ -361,8 +361,11 @@ unique_ptr<ParsedExpression> PEGTransformerFactory::TransformUnionType(PEGTransf
 
 child_list_t<LogicalType> PEGTransformerFactory::TransformColIdTypeList(PEGTransformer &transformer,
                                                                         ParseResult &parse_result) {
+	// ColIdTypeList <- Parens(List(ColIdType)) / AngleBrackets(List(ColIdColonType))
 	auto &list_pr = parse_result.Cast<ListParseResult>();
-	auto &extract_list = ExtractResultFromParens(list_pr.Child<ListParseResult>(0));
+	auto &brackets = list_pr.Child<ChoiceParseResult>(0).GetResult().Cast<ListParseResult>();
+	// Both Parens and AngleBrackets: child(1) is the List(...) content
+	auto &extract_list = brackets.GetChild(1);
 	auto colid_type_list = ExtractParseResultsFromList(extract_list);
 
 	child_list_t<LogicalType> result;
@@ -377,6 +380,15 @@ pair<string, LogicalType> PEGTransformerFactory::TransformColIdType(PEGTransform
 	auto &list_pr = parse_result.Cast<ListParseResult>();
 	auto colid = transformer.Transform<string>(list_pr.Child<ListParseResult>(0));
 	auto type = transformer.Transform<LogicalType>(list_pr.Child<ListParseResult>(1));
+	return make_pair(colid, type);
+}
+
+pair<string, LogicalType> PEGTransformerFactory::TransformColIdColonType(PEGTransformer &transformer,
+                                                                         ParseResult &parse_result) {
+	// ColIdColonType <- ColId ':' Type
+	auto &list_pr = parse_result.Cast<ListParseResult>();
+	auto colid = transformer.Transform<string>(list_pr.Child<ListParseResult>(0));
+	auto type = transformer.Transform<LogicalType>(list_pr.Child<ListParseResult>(2));
 	return make_pair(colid, type);
 }
 
