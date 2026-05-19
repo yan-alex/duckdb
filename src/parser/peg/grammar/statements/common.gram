@@ -142,7 +142,7 @@ RowType <- RowOrStruct ColIdTypeList
 SetofType <- 'SETOF' Type
 UnionType <- 'UNION' ColIdTypeList
 ColIdTypeList <- Parens(List(ColIdType))
-MapType <- 'MAP' Parens(List(Type))
+MapType <- ('MAP' Parens(List(Type))) / ('MAP' AngleBrackets(List(Type)))
 ColIdType <- ColId Type
 ArrayBounds <- SquareBracketsArray / 'ARRAY'
 SquareBracketsArray <- '[' Expression? ']'
@@ -161,3 +161,4 @@ RowOrStruct <- 'ROW' / 'STRUCT'
 %whitespace <- [ \t\n\r]*
 List(D) <- D (',' D)* ','?
 Parens(D) <- '(' D ')'
+AngleBrackets(D) <- '<' D '>'

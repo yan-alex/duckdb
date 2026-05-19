@@ -289,9 +289,13 @@ unique_ptr<ParsedExpression> PEGTransformerFactory::TransformCharacterType(PEGTr
 
 unique_ptr<ParsedExpression> PEGTransformerFactory::TransformMapType(PEGTransformer &transformer,
                                                                      ParseResult &parse_result) {
+	// MapType <- ('MAP' Parens(List(Type))) / ('MAP' AngleBrackets(List(Type)))
 	auto &list_pr = parse_result.Cast<ListParseResult>();
-	auto &extract_parens = ExtractResultFromParens(list_pr.Child<ListParseResult>(1));
-	auto type_list = ExtractParseResultsFromList(extract_parens);
+	auto &map_pr = list_pr.Child<ChoiceParseResult>(0).GetResult().Cast<ListParseResult>();
+	// Both alternatives: 'MAP' <brackets>(List(Type)) — child(1) wraps List(Type) at GetChild(1)
+	auto &brackets = map_pr.Child<ListParseResult>(1);
+	auto &inner = brackets.GetChild(1);
+	auto type_list = ExtractParseResultsFromList(inner);
 	if (type_list.size() != 2) {
 		throw ParserException("Map type needs exactly two entries, key and value type.");
 	}
