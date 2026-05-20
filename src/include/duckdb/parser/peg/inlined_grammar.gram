@@ -657,6 +657,7 @@ FuncNameKeyword <- 'ARRAY' /
 'RIGHT' /
 'SIMILAR' /
 'SMALLINT' /
+'STRING' /
 'STRUCT' /
 'TABLESAMPLE' /
 'TINYINT' /
@@ -689,6 +690,7 @@ TypeNameKeyword <- 'ASOF' /
 'RIGHT' /
 'UNPACK' /
 'SIMILAR' /
+'STRING' /
 'TABLESAMPLE' /
 'TINYINT' /
 'TRY_CAST' /

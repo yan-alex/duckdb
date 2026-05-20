@@ -512,6 +512,7 @@ void PEGKeywordHelper::InitializeKeywordMaps() { // Renamed for clarity
 	typefunc_keyword_map.insert("semi");
 	typefunc_keyword_map.insert("similar");
 	typefunc_keyword_map.insert("smallint");
+	typefunc_keyword_map.insert("string");
 	typefunc_keyword_map.insert("struct");
 	typefunc_keyword_map.insert("tablesample");
 	typefunc_keyword_map.insert("tinyint");
@@ -549,6 +550,7 @@ void PEGKeywordHelper::InitializeKeywordMaps() { // Renamed for clarity
 	typename_keyword_map.insert("right");
 	typename_keyword_map.insert("semi");
 	typename_keyword_map.insert("similar");
+	typename_keyword_map.insert("string");
 	typename_keyword_map.insert("tablesample");
 	typename_keyword_map.insert("tinyint");
 	typename_keyword_map.insert("try_cast");
