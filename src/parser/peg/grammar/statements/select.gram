@@ -10,7 +10,7 @@ SelectParens <- Parens(SelectStatementInternal)
 SetopClause <- SetopType DistinctOrAll? ByName?
 SetopType <- SetopUnion / SetopExcept
 SetopUnion <- 'UNION'
-SetopExcept <- 'EXCEPT'
+SetopExcept <- 'EXCEPT' / 'MINUS'
 ByName <- 'BY' 'NAME'
 
 SelectStatementType <- OptionalParensSimpleSelect / ValuesClauseWithAlias / ValuesClause / DescribeStatement / TableStatement / PivotStatement / UnpivotStatement

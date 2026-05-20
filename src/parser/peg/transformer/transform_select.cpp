@@ -162,7 +162,11 @@ bool PEGTransformerFactory::TransformDistinctOrAll(PEGTransformer &transformer, 
 
 SetOperationType PEGTransformerFactory::TransformSetopType(PEGTransformer &transformer, ParseResult &parse_result) {
 	auto &list_pr = parse_result.Cast<ListParseResult>();
-	return transformer.TransformEnum<SetOperationType>(list_pr.Child<ChoiceParseResult>(0).GetResult());
+	auto &setop_result = list_pr.Child<ChoiceParseResult>(0).GetResult();
+	if (setop_result.name == "SetopExcept") {
+		return SetOperationType::EXCEPT;
+	}
+	return transformer.TransformEnum<SetOperationType>(setop_result);
 }
 
 unique_ptr<SelectStatement> PEGTransformerFactory::TransformSelectParens(PEGTransformer &transformer,

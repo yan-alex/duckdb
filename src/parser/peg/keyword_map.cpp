@@ -50,6 +50,7 @@ void PEGKeywordHelper::InitializeKeywordMaps() { // Renamed for clarity
 	reserved_keyword_map.insert("lateral");
 	reserved_keyword_map.insert("leading");
 	reserved_keyword_map.insert("limit");
+	reserved_keyword_map.insert("minus");
 	reserved_keyword_map.insert("not");
 	reserved_keyword_map.insert("null");
 	reserved_keyword_map.insert("offset");

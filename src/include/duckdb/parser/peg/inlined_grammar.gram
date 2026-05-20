@@ -536,6 +536,7 @@ ReservedKeyword <- 'ALL' /
 'LATERAL' /
 'LEADING' /
 'LIMIT' /
+'MINUS' /
 'NOT' /
 'NULL' /
 'OFFSET' /
@@ -1249,7 +1250,7 @@ SelectParens <- Parens(SelectStatementInternal)
 SetopClause <- SetopType DistinctOrAll? ByName?
 SetopType <- SetopUnion / SetopExcept
 SetopUnion <- 'UNION'
-SetopExcept <- 'EXCEPT'
+SetopExcept <- 'EXCEPT' / 'MINUS'
 ByName <- 'BY' 'NAME'
 
 SelectStatementType <- OptionalParensSimpleSelect / ValuesClauseWithAlias / ValuesClause / DescribeStatement / TableStatement / PivotStatement / UnpivotStatement
