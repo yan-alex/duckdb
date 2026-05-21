@@ -9,7 +9,6 @@ void PEGKeywordHelper::InitializeKeywordMaps() { // Renamed for clarity
 	initialized = true;
 
 	// Populating reserved_keyword_map
-	reserved_keyword_map.insert("all");
 	reserved_keyword_map.insert("analyse");
 	reserved_keyword_map.insert("analyze");
 	reserved_keyword_map.insert("and");
