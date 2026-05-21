@@ -202,6 +202,7 @@ static const ConfigurationOption internal_options[] = {
     DUCKDB_SETTING(ScalarSubqueryErrorOnMultipleRowsSetting),
     DUCKDB_SETTING(SchedulerProcessPartialSetting),
     DUCKDB_LOCAL(SchemaSetting),
+    DUCKDB_SETTING(SparkModeSetting),
     DUCKDB_LOCAL(SearchPathSetting),
     DUCKDB_GLOBAL(SecretDirectorySetting),
     DUCKDB_SETTING_CALLBACK(StorageBlockPrefetchSetting),
