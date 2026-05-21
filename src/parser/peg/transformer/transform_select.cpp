@@ -1160,6 +1160,12 @@ unique_ptr<SelectStatement> PEGTransformerFactory::TransformValuesClause(PEGTran
 	auto result = make_uniq<ExpressionListRef>();
 	result->alias = "valueslist";
 	result->values = std::move(values_list);
+	if (result->expected_names.empty()) {
+		// push col1, col2, col3 (for Spark)
+		for (idx_t i = 0; i < result->values[0].size(); i++) {
+			result->expected_names.push_back("col" + to_string(i + 1));
+		}
+	}
 
 	auto select_node = make_uniq<SelectNode>();
 	select_node->from_table = std::move(result);
