@@ -317,7 +317,7 @@ unique_ptr<SelectNode> PEGTransformerFactory::TransformSelectClause(PEGTransform
 
 DistinctClause PEGTransformerFactory::TransformDistinctClause(PEGTransformer &transformer, ParseResult &parse_result) {
 	auto &list_pr = parse_result.Cast<ListParseResult>();
-	return transformer.Transform<DistinctClause>(list_pr.Child<ChoiceParseResult>(0).GetResult());
+	return transformer.Transform<DistinctClause>(list_pr.Child<ListParseResult>(0));
 }
 
 DistinctClause PEGTransformerFactory::TransformDistinctOn(PEGTransformer &transformer, ParseResult &parse_result) {
