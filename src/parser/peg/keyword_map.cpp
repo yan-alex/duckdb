@@ -104,6 +104,7 @@ void PEGKeywordHelper::InitializeKeywordMaps() { // Renamed for clarity
 	unreserved_keyword_map.insert("backward");
 	unreserved_keyword_map.insert("before");
 	unreserved_keyword_map.insert("begin");
+	unreserved_keyword_map.insert("binding");
 	unreserved_keyword_map.insert("cache");
 	unreserved_keyword_map.insert("call");
 	unreserved_keyword_map.insert("called");
@@ -122,6 +123,7 @@ void PEGKeywordHelper::InitializeKeywordMaps() { // Renamed for clarity
 	unreserved_keyword_map.insert("comments");
 	unreserved_keyword_map.insert("commit");
 	unreserved_keyword_map.insert("committed");
+	unreserved_keyword_map.insert("compensation");
 	unreserved_keyword_map.insert("compression");
 	unreserved_keyword_map.insert("configuration");
 	unreserved_keyword_map.insert("conflict");
@@ -168,6 +170,7 @@ void PEGKeywordHelper::InitializeKeywordMaps() { // Renamed for clarity
 	unreserved_keyword_map.insert("error");
 	unreserved_keyword_map.insert("escape");
 	unreserved_keyword_map.insert("event");
+	unreserved_keyword_map.insert("evolution");
 	unreserved_keyword_map.insert("exclude");
 	unreserved_keyword_map.insert("excluding");
 	unreserved_keyword_map.insert("exclusive");

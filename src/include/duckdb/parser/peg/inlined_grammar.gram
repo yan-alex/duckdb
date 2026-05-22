@@ -182,6 +182,7 @@ UnreservedKeyword <- 'ABORT' /
 'BACKWARD' /
 'BEFORE' /
 'BEGIN' /
+'BINDING' /
 'CACHE' /
 'CALL' /
 'CALLED' /
@@ -200,6 +201,7 @@ UnreservedKeyword <- 'ABORT' /
 'COMMENTS' /
 'COMMIT' /
 'COMMITTED' /
+'COMPENSATION' /
 'COMPRESSION' /
 'CONFIGURATION' /
 'CONFLICT' /
@@ -246,6 +248,7 @@ UnreservedKeyword <- 'ABORT' /
 'ERROR' /
 'ESCAPE' /
 'EVENT' /
+'EVOLUTION' /
 'EXCLUDE' /
 'EXCLUDING' /
 'EXCLUSIVE' /
@@ -986,7 +989,10 @@ CreateSecretStmt <- 'SECRET' IfNotExists? SecretName? SecretStorageSpecifier? Ge
 
 SecretStorageSpecifier <- 'IN' Identifier
 
-CreateViewStmt <- 'RECURSIVE'? 'VIEW' IfNotExists? QualifiedName InsertColumnList? WithList? 'AS' SelectStatementInternal
+CreateViewStmt <- 'RECURSIVE'? 'VIEW' IfNotExists? QualifiedName InsertColumnList? WithSchemaMode? WithList? 'AS' SelectStatementInternal
+
+WithSchemaMode <- 'WITH' 'SCHEMA' SchemaModeName
+SchemaModeName <- 'BINDING' / 'COMPENSATION' / 'EVOLUTION' / ('TYPE' 'EVOLUTION')
 
 DescribeStatement <- ShowTables / ShowSelect / ShowAllTables / ShowQualifiedName
 
