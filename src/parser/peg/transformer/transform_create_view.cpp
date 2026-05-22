@@ -106,7 +106,8 @@ unique_ptr<CreateStatement> PEGTransformerFactory::TransformCreateViewStmt(PEGTr
 	info->schema = qualified_name.schema;
 	info->view_name = qualified_name.name;
 	info->aliases = column_list;
-	auto &with_list_opt = list_pr.Child<OptionalParseResult>(5);
+	// WithSchemaMode? at index 5 - parsed and ignored (Spark compatibility)
+	auto &with_list_opt = list_pr.Child<OptionalParseResult>(6);
 	if (with_list_opt.HasResult()) {
 		auto options_expr =
 		    transformer.Transform<case_insensitive_map_t<unique_ptr<ParsedExpression>>>(with_list_opt.GetResult());
@@ -127,7 +128,7 @@ unique_ptr<CreateStatement> PEGTransformerFactory::TransformCreateViewStmt(PEGTr
 			}
 		}
 	}
-	auto select_statement = transformer.Transform<unique_ptr<SelectStatement>>(list_pr.Child<ListParseResult>(7));
+	auto select_statement = transformer.Transform<unique_ptr<SelectStatement>>(list_pr.Child<ListParseResult>(8));
 	if (list_pr.Child<OptionalParseResult>(0).HasResult()) {
 		ConvertToRecursiveView(info, select_statement->node);
 	} else {

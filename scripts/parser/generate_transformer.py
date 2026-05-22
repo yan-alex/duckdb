@@ -99,6 +99,8 @@ EXCLUDED_RULES = {
     "CTEBodyContent",
     "SingleArrowPair",
     "OperatorLiteral",
+    "WithSchemaMode",
+    "SchemaModeName",
 }
 
 

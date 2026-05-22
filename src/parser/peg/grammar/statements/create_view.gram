@@ -1,1 +1,4 @@
-CreateViewStmt <- 'RECURSIVE'? 'VIEW' IfNotExists? QualifiedName InsertColumnList? WithList? 'AS' SelectStatementInternal
+CreateViewStmt <- 'RECURSIVE'? 'VIEW' IfNotExists? QualifiedName InsertColumnList? WithSchemaMode? WithList? 'AS' SelectStatementInternal
+
+WithSchemaMode <- 'WITH' 'SCHEMA' SchemaModeName
+SchemaModeName <- 'BINDING' / 'COMPENSATION' / 'EVOLUTION' / ('TYPE' 'EVOLUTION')
