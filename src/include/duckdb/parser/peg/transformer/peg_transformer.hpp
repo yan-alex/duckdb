@@ -1151,6 +1151,9 @@ private:
 	static unique_ptr<ParsedExpression> TransformGroupingSetsClause(PEGTransformer &transformer,
 	                                                                ParseResult &parse_result);
 	static string TransformCubeOrRollup(PEGTransformer &transformer, ParseResult &parse_result);
+	static string TransformGroupByModifier(PEGTransformer &transformer, ParseResult &parse_result);
+	static string TransformWithCubeOrRollup(PEGTransformer &transformer, ParseResult &parse_result);
+	static GroupByNode TransformTrailingGroupingSets(PEGTransformer &transformer, ParseResult &parse_result);
 
 	static CommonTableExpressionMap TransformWithClause(PEGTransformer &transformer, ParseResult &parse_result);
 	static pair<string, unique_ptr<CommonTableExpressionInfo>> TransformWithStatement(PEGTransformer &transformer,

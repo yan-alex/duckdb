@@ -133,7 +133,10 @@ SampleRows <- 'ROWS'
 
 GroupByExpressions <- GroupByList / GroupByAll
 GroupByAll <- 'ALL'
-GroupByList <- List(GroupByExpression)
+GroupByList <- List(GroupByExpression) GroupByModifier?
+GroupByModifier <- WithCubeOrRollup / TrailingGroupingSets
+WithCubeOrRollup <- 'WITH' CubeOrRollup
+TrailingGroupingSets <- 'GROUPING' 'SETS' Parens(GroupByList)
 GroupByExpression <- EmptyGroupingItem / CubeOrRollupClause / GroupingSetsClause / Expression
 EmptyGroupingItem <- '(' ')'
 CubeOrRollupClause <- CubeOrRollup Parens(List(Expression)?)

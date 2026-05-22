@@ -863,6 +863,9 @@ void PEGTransformerFactory::RegisterSelect() {
 	REGISTER_TRANSFORM(TransformEmptyGroupingItem);
 	REGISTER_TRANSFORM(TransformCubeOrRollupClause);
 	REGISTER_TRANSFORM(TransformGroupingSetsClause);
+	REGISTER_TRANSFORM(TransformGroupByModifier);
+	REGISTER_TRANSFORM(TransformWithCubeOrRollup);
+	REGISTER_TRANSFORM(TransformTrailingGroupingSets);
 
 	REGISTER_TRANSFORM(TransformWithClause);
 	REGISTER_TRANSFORM(TransformWithStatement);
