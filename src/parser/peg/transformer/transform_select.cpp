@@ -1555,6 +1555,77 @@ GroupByNode PEGTransformerFactory::TransformGroupByList(PEGTransformer &transfor
 	auto &list_pr = parse_result.Cast<ListParseResult>();
 	auto group_by_list = ExtractParseResultsFromList(list_pr.Child<ListParseResult>(0));
 
+	// Check for optional trailing modifier (WITH CUBE/ROLLUP or GROUPING SETS)
+	auto &modifier_opt = list_pr.Child<OptionalParseResult>(1);
+	if (modifier_opt.HasResult()) {
+		auto &modifier_choice = modifier_opt.GetResult().Cast<ListParseResult>().Child<ChoiceParseResult>(0);
+		auto &modifier_result = modifier_choice.GetResult();
+
+		GroupByNode result;
+		GroupingExpressionMap map;
+
+		if (StringUtil::CIEquals(modifier_result.name, "WithCubeOrRollup")) {
+			// GROUP BY a, b WITH CUBE/ROLLUP
+			// Extract CUBE or ROLLUP keyword
+			auto &with_pr = modifier_result.Cast<ListParseResult>();
+			auto type_str = transformer.Transform<string>(with_pr.Child<ListParseResult>(1));
+
+			// Collect all preceding expressions
+			vector<GroupingSet> unfolding_sets;
+			for (auto &group_by_child : group_by_list) {
+				auto &group_by_expr_child_list = group_by_child.get().Cast<ListParseResult>();
+				auto &group_by_expr = group_by_expr_child_list.Child<ChoiceParseResult>(0).GetResult();
+				auto expr = transformer.Transform<unique_ptr<ParsedExpression>>(group_by_expr);
+				vector<ProjectionIndex> indexes;
+				AddGroupByExpression(std::move(expr), map, result, indexes);
+				GroupingSet s;
+				for (auto idx : indexes) {
+					s.insert(idx);
+				}
+				unfolding_sets.push_back(std::move(s));
+			}
+
+			if (StringUtil::CIEquals(type_str, "CUBE")) {
+				CheckGroupingSetCubes(0, unfolding_sets.size());
+				GroupingSet current_set;
+				AddCubeSets(current_set, unfolding_sets, result.grouping_sets, 0);
+			} else {
+				// ROLLUP
+				GroupingSet current_set;
+				result.grouping_sets.push_back(current_set);
+				for (idx_t i = 0; i < unfolding_sets.size(); i++) {
+					current_set.insert(unfolding_sets[i].begin(), unfolding_sets[i].end());
+					result.grouping_sets.push_back(current_set);
+				}
+			}
+		} else {
+			// GROUP BY a, b, c GROUPING SETS (...)
+			// Add preceding expressions as group expressions (the column universe)
+			for (auto &group_by_child : group_by_list) {
+				auto &group_by_expr_child_list = group_by_child.get().Cast<ListParseResult>();
+				auto &group_by_expr = group_by_expr_child_list.Child<ChoiceParseResult>(0).GetResult();
+				auto expr = transformer.Transform<unique_ptr<ParsedExpression>>(group_by_expr);
+				vector<ProjectionIndex> indexes;
+				AddGroupByExpression(std::move(expr), map, result, indexes);
+			}
+			// Process the trailing GROUPING SETS clause
+			// TrailingGroupingSets <- 'GROUPING' 'SETS' Parens(GroupByList)
+			auto &trailing_gs = modifier_result.Cast<ListParseResult>();
+			auto &inner_list = ExtractResultFromParens(trailing_gs.Child<ListParseResult>(2));
+			// inner_list is a GroupByList, which is List(GroupByExpression) GroupByModifier?
+			auto &inner_list_pr = inner_list.Cast<ListParseResult>();
+			auto gs_list = ExtractParseResultsFromList(inner_list_pr.Child<ListParseResult>(0));
+			for (auto &child_wrapper : gs_list) {
+				auto &child_list_pr = child_wrapper.get().Cast<ListParseResult>();
+				auto &child_expr = child_list_pr.Child<ChoiceParseResult>(0).GetResult();
+				auto child_sets = GroupByExpressionUnfolding(transformer, child_expr, map, result);
+				result.grouping_sets.insert(result.grouping_sets.end(), child_sets.begin(), child_sets.end());
+			}
+		}
+		return result;
+	}
+
+	// No modifier: original behavior
 	GroupByNode result;
 	GroupingExpressionMap map;
 
@@ -1605,6 +1676,19 @@ unique_ptr<ParsedExpression> PEGTransformerFactory::TransformCubeOrRollupClause(
 unique_ptr<ParsedExpression> PEGTransformerFactory::TransformGroupingSetsClause(PEGTransformer &transformer,
                                                                                 ParseResult &parse_result) {
 	throw NotImplementedException("Rule 'GroupingSetsClause' has not been implemented yet");
+}
+
+string PEGTransformerFactory::TransformGroupByModifier(PEGTransformer &transformer, ParseResult &parse_result) {
+	throw NotImplementedException("Rule 'GroupByModifier' - handled inline by TransformGroupByList");
+}
+
+string PEGTransformerFactory::TransformWithCubeOrRollup(PEGTransformer &transformer, ParseResult &parse_result) {
+	throw NotImplementedException("Rule 'WithCubeOrRollup' - handled inline by TransformGroupByList");
+}
+
+GroupByNode PEGTransformerFactory::TransformTrailingGroupingSets(PEGTransformer &transformer,
+                                                                 ParseResult &parse_result) {
+	throw NotImplementedException("Rule 'TrailingGroupingSets' - handled inline by TransformGroupByList");
 }
 
 CommonTableExpressionMap PEGTransformerFactory::TransformWithClause(PEGTransformer &transformer,
