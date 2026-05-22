@@ -1124,8 +1124,9 @@ string PEGTransformerFactory::TransformAtUnit(PEGTransformer &transformer, Parse
 
 unique_ptr<TableRef> PEGTransformerFactory::TransformValuesRef(PEGTransformer &transformer, ParseResult &parse_result) {
 	auto &list_pr = parse_result.Cast<ListParseResult>();
+	auto &inner_list = list_pr.GetChild(0).Cast<ListParseResult>();
 	auto values_select_statement =
-	    transformer.Transform<unique_ptr<SelectStatement>>(list_pr.Child<ListParseResult>(0));
+	    transformer.Transform<unique_ptr<SelectStatement>>(inner_list.Child<ChoiceParseResult>(0).GetResult());
 	auto subquery_ref = make_uniq<SubqueryRef>(std::move(values_select_statement));
 	auto &opt_alias = list_pr.Child<OptionalParseResult>(1);
 	if (opt_alias.HasResult()) {
@@ -1179,13 +1180,16 @@ unique_ptr<SelectStatement> PEGTransformerFactory::TransformValuesClauseNoParens
 																   ParseResult &parse_result) {
 	auto &list_pr = parse_result.Cast<ListParseResult>();
 
-	auto expression = transformer.Transform<unique_ptr<ParsedExpression>>(list_pr.Child<ListParseResult>(1));
+	auto expression_list = ExtractParseResultsFromList(list_pr.Child<ListParseResult>(1));
 
 	auto result = make_uniq<ExpressionListRef>();
 	result->alias = "valueslist";
-	result->values = vector<vector<unique_ptr<ParsedExpression>>>();
-	result->values.push_back(vector<unique_ptr<ParsedExpression>>());
-	result->values[0].push_back(std::move(expression));
+	for (auto &expression_pr : expression_list) {
+		auto expression = transformer.Transform<unique_ptr<ParsedExpression>>(expression_pr);
+		vector<unique_ptr<ParsedExpression>> row;
+		row.push_back(std::move(expression));
+		result->values.push_back(std::move(row));
+	}
 
 	auto select_node = make_uniq<SelectNode>();
 	select_node->from_table = std::move(result);
