@@ -1286,7 +1286,7 @@ TableRef <- InnerTableRef JoinOrPivot*
 TableSubquery <- Lateral? SubqueryReference TableAlias?
 BaseTableRef <- TableAliasColon? BaseTableName TableAlias? AtClause? SampleClause?
 TableAliasColon <- ColIdOrString ':'
-ValuesRef <- ValuesClause TableAlias?
+ValuesRef <- (ValuesClause / ValuesClauseNoParens) TableAlias?
 ParensTableRef <- TableAliasColon? Parens(TableRef) TableAlias? SampleClause?
 
 JoinOrPivot <- JoinClause / TablePivotClause / TableUnpivotClause
@@ -1411,7 +1411,7 @@ ExpressionAsCollabel <- Expression 'AS' ColLabelOrString
 ExpressionOptIdentifier <- Expression Identifier?
 
 ValuesClause <- 'VALUES' List(ValuesExpressions)
-ValuesClauseNoParens <- 'VALUES' Expression
+ValuesClauseNoParens <- 'VALUES' List(Expression)
 ValuesClauseWithAlias <- (ValuesClause / ValuesClauseNoParens) TableAlias
 ValuesExpressions <- Parens(List(Expression))
 
