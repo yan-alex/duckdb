@@ -651,6 +651,7 @@ const char INLINED_PEG_GRAMMAR[] = {
 	"'STRING' /\n"
 	"'STRUCT' /\n"
 	"'TABLESAMPLE' /\n"
+	"'TIMESTAMP' /\n"
 	"'TINYINT' /\n"
 	"'VERBOSE'\n"
 	"TypeNameKeyword <- 'ASOF' /\n"
