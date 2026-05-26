@@ -518,6 +518,7 @@ void PEGKeywordHelper::InitializeKeywordMaps() { // Renamed for clarity
 	typefunc_keyword_map.insert("string");
 	typefunc_keyword_map.insert("struct");
 	typefunc_keyword_map.insert("tablesample");
+	typefunc_keyword_map.insert("timestamp");
 	typefunc_keyword_map.insert("tinyint");
 	typefunc_keyword_map.insert("try_cast");
 	typefunc_keyword_map.insert("unpack");

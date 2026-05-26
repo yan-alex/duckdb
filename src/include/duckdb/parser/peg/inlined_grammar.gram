@@ -663,6 +663,7 @@ FuncNameKeyword <- 'ARRAY' /
 'STRING' /
 'STRUCT' /
 'TABLESAMPLE' /
+'TIMESTAMP' /
 'TINYINT' /
 'VERBOSE'
 TypeNameKeyword <- 'ASOF' /
