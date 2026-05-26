@@ -925,3 +925,6 @@ overrides:
   UpdateSetColumnTarget: "string"
   # spark
   SparkUsing: "pair<string, string>"
+  ColumnComment: "string"
+  ViewColumn: "string"
+  ViewColumnList: "vector<string>"
