@@ -552,6 +552,7 @@ private:
 	                                                                      ParseResult &parse_result);
 	static GeneratedColumnDefinition TransformGeneratedColumn(PEGTransformer &transformer, ParseResult &parse_result);
 	static CompressionType TransformColumnCompression(PEGTransformer &transformer, ParseResult &parse_result);
+	static string TransformColumnComment(PEGTransformer &transformer, ParseResult &parse_result);
 	static pair<bool, ConstraintType> TransformPrimaryKeyConstraint(PEGTransformer &transformer,
 	                                                                ParseResult &parse_result);
 	static pair<bool, ConstraintType> TransformUniqueConstraint(PEGTransformer &transformer, ParseResult &parse_result);
@@ -581,6 +582,8 @@ private:
 
 	// create_view.gram
 	static unique_ptr<CreateStatement> TransformCreateViewStmt(PEGTransformer &transformer, ParseResult &parse_result);
+	static vector<string> TransformViewColumnList(PEGTransformer &transformer, ParseResult &parse_result);
+	static string TransformViewColumn(PEGTransformer &transformer, ParseResult &parse_result);
 
 	// create_trigger.gram
 	static unique_ptr<CreateStatement> TransformCreateTriggerStmt(PEGTransformer &transformer,

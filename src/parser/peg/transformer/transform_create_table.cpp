@@ -295,6 +295,8 @@ ConstraintColumnDefinition PEGTransformerFactory::TransformColumnDefinition(PEGT
 	transformer.TransformOptional<LogicalType>(list_pr, 1, type);
 	auto &constraints_opt = list_pr.Child<OptionalParseResult>(4);
 	CompressionType compression_type = CompressionType::COMPRESSION_AUTO;
+	string comment;
+	bool has_comment = false;
 	ColumnConstraint column_constraint;
 	if (constraints_opt.HasResult()) {
 		auto &constraints_repeat = constraints_opt.GetResult().Cast<RepeatParseResult>();
@@ -344,6 +346,9 @@ ConstraintColumnDefinition PEGTransformerFactory::TransformColumnDefinition(PEGT
 				vector<unique_ptr<ParsedExpression>> type_children;
 				type_children.push_back(std::move(collation));
 				type = LogicalType::UNBOUND(make_uniq<TypeExpression>("VARCHAR", std::move(type_children)));
+			} else if (constraint.name == "ColumnComment") {
+				comment = transformer.Transform<string>(constraint);
+				has_comment = true;
 			} else {
 				column_constraint.constraints.push_back(transformer.Transform<unique_ptr<Constraint>>(constraint));
 			}
@@ -379,6 +384,9 @@ ConstraintColumnDefinition PEGTransformerFactory::TransformColumnDefinition(PEGT
 		col.SetDefaultValue(std::move(column_constraint.default_value));
 	}
 	col.SetCompressionType(compression_type);
+	if (has_comment) {
+		col.SetComment(Value(comment));
+	}
 	ConstraintColumnDefinition result = {std::move(col), column_constraint.constraint_types,
 	                                     std::move(column_constraint.constraints)};
 	return result;
@@ -482,6 +490,12 @@ CompressionType PEGTransformerFactory::TransformColumnCompression(PEGTransformer
 	auto &list_pr = parse_result.Cast<ListParseResult>();
 	auto compression_string = transformer.Transform<string>(list_pr.Child<ListParseResult>(2));
 	return EnumUtil::FromString<CompressionType>(StringUtil::Lower(compression_string));
+}
+
+string PEGTransformerFactory::TransformColumnComment(PEGTransformer &transformer, ParseResult &parse_result) {
+	// ColumnComment <- 'COMMENT' StringLiteral
+	auto &list_pr = parse_result.Cast<ListParseResult>();
+	return list_pr.Child<StringLiteralParseResult>(1).result;
 }
 
 unique_ptr<ForeignKeyConstraint> PEGTransformerFactory::TransformForeignKeyConstraint(PEGTransformer &transformer,

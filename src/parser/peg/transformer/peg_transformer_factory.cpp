@@ -364,6 +364,7 @@ void PEGTransformerFactory::RegisterCreateTable() {
 	REGISTER_TRANSFORM(TransformDefaultValue);
 	REGISTER_TRANSFORM(TransformGeneratedColumn);
 	REGISTER_TRANSFORM(TransformColumnCompression);
+	REGISTER_TRANSFORM(TransformColumnComment);
 	REGISTER_TRANSFORM(TransformPrimaryKeyConstraint);
 	REGISTER_TRANSFORM(TransformUniqueConstraint);
 	REGISTER_TRANSFORM(TransformNotNullConstraint);
@@ -395,6 +396,8 @@ void PEGTransformerFactory::RegisterCreateType() {
 
 void PEGTransformerFactory::RegisterCreateView() {
 	REGISTER_TRANSFORM(TransformCreateViewStmt);
+	REGISTER_TRANSFORM(TransformViewColumnList);
+	REGISTER_TRANSFORM(TransformViewColumn);
 }
 
 void PEGTransformerFactory::RegisterCreateTrigger() {

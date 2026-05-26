@@ -139,4 +139,23 @@ unique_ptr<CreateStatement> PEGTransformerFactory::TransformCreateViewStmt(PEGTr
 	return result;
 }
 
+vector<string> PEGTransformerFactory::TransformViewColumnList(PEGTransformer &transformer, ParseResult &parse_result) {
+	// ViewColumnList <- Parens(List(ViewColumn))
+	auto &list_pr = parse_result.Cast<ListParseResult>();
+	auto &inner_list = ExtractResultFromParens(list_pr.Child<ListParseResult>(0));
+	auto columns = ExtractParseResultsFromList(inner_list.Cast<ListParseResult>());
+	vector<string> result;
+	for (auto &column : columns) {
+		result.push_back(transformer.Transform<string>(column));
+	}
+	return result;
+}
+
+string PEGTransformerFactory::TransformViewColumn(PEGTransformer &transformer, ParseResult &parse_result) {
+	// ViewColumn <- ColId ('COMMENT' StringLiteral)?
+	auto &list_pr = parse_result.Cast<ListParseResult>();
+	// Extract just the column name, ignoring the optional COMMENT
+	return transformer.Transform<string>(list_pr.Child<ListParseResult>(0));
+}
+
 } // namespace duckdb

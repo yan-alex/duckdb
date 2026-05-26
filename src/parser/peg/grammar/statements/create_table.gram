@@ -34,7 +34,8 @@ ReservedTableQualification <- ReservedTableName '.'
 CreateTableColumnList <- List(CreateTableColumnElement)
 CreateTableColumnElement <- ColumnDefinition / TopLevelConstraint
 ColumnDefinition <- DottedIdentifier Type? GeneratedColumn? ConstraintNameClause? ColumnConstraint*
-ColumnConstraint <- NotNullConstraint / UniqueConstraint / PrimaryKeyConstraint / DefaultValue / CheckConstraint / ForeignKeyConstraint / ColumnCollation / ColumnCompression
+ColumnConstraint <- NotNullConstraint / UniqueConstraint / PrimaryKeyConstraint / DefaultValue / CheckConstraint / ForeignKeyConstraint / ColumnCollation / ColumnCompression / ColumnComment
+ColumnComment <- 'COMMENT' StringLiteral
 NotNullConstraint <- 'NOT'? 'NULL'
 UniqueConstraint <- 'UNIQUE'
 PrimaryKeyConstraint <- 'PRIMARY' 'KEY'

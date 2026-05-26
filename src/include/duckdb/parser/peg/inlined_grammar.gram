@@ -989,7 +989,9 @@ CreateSecretStmt <- 'SECRET' IfNotExists? SecretName? SecretStorageSpecifier? Ge
 
 SecretStorageSpecifier <- 'IN' Identifier
 
-CreateViewStmt <- 'RECURSIVE'? 'VIEW' IfNotExists? QualifiedName InsertColumnList? WithSchemaMode? WithList? 'AS' SelectStatementInternal
+CreateViewStmt <- 'RECURSIVE'? 'VIEW' IfNotExists? QualifiedName ViewColumnList? WithSchemaMode? WithList? 'AS' SelectStatementInternal
+ViewColumnList <- Parens(List(ViewColumn))
+ViewColumn <- ColId ('COMMENT' StringLiteral)?
 
 WithSchemaMode <- 'WITH' 'SCHEMA' SchemaModeName
 SchemaModeName <- 'BINDING' / 'COMPENSATION' / 'EVOLUTION' / ('TYPE' 'EVOLUTION')
@@ -1095,7 +1097,8 @@ ReservedTableQualification <- ReservedTableName '.'
 CreateTableColumnList <- List(CreateTableColumnElement)
 CreateTableColumnElement <- ColumnDefinition / TopLevelConstraint
 ColumnDefinition <- DottedIdentifier Type? GeneratedColumn? ConstraintNameClause? ColumnConstraint*
-ColumnConstraint <- NotNullConstraint / UniqueConstraint / PrimaryKeyConstraint / DefaultValue / CheckConstraint / ForeignKeyConstraint / ColumnCollation / ColumnCompression
+ColumnConstraint <- NotNullConstraint / UniqueConstraint / PrimaryKeyConstraint / DefaultValue / CheckConstraint / ForeignKeyConstraint / ColumnCollation / ColumnCompression / ColumnComment
+ColumnComment <- 'COMMENT' StringLiteral
 NotNullConstraint <- 'NOT'? 'NULL'
 UniqueConstraint <- 'UNIQUE'
 PrimaryKeyConstraint <- 'PRIMARY' 'KEY'
