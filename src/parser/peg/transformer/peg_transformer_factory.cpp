@@ -512,6 +512,8 @@ void PEGTransformerFactory::RegisterExpression() {
 	REGISTER_TRANSFORM(TransformInExpressionList);
 	REGISTER_TRANSFORM(TransformInSelectStatement);
 	REGISTER_TRANSFORM(TransformBetweenClause);
+	REGISTER_TRANSFORM(TransformLikeAnyAllClause);
+	REGISTER_TRANSFORM(TransformLikeAnyOrAll);
 	REGISTER_TRANSFORM(TransformLikeClause);
 	REGISTER_TRANSFORM(TransformEscapeClause);
 	REGISTER_TRANSFORM(TransformLikeVariations);
@@ -1103,6 +1105,9 @@ void PEGTransformerFactory::RegisterEnums() {
 
 	RegisterEnum<bool>("SubqueryAny", true);
 	RegisterEnum<bool>("SubqueryAll", false);
+
+	RegisterEnum<bool>("LikeAny", true);
+	RegisterEnum<bool>("LikeAll", false);
 
 	RegisterEnum<bool>("IgnoreNulls", true);
 	RegisterEnum<bool>("RespectNulls", false);

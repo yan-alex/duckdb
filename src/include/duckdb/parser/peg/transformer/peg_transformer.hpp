@@ -695,6 +695,9 @@ private:
 	static unique_ptr<ParsedExpression> TransformInSelectStatement(PEGTransformer &transformer,
 	                                                               ParseResult &parse_result);
 	static unique_ptr<ParsedExpression> TransformBetweenClause(PEGTransformer &transformer, ParseResult &parse_result);
+	static unique_ptr<ParsedExpression> TransformLikeAnyAllClause(PEGTransformer &transformer,
+	                                                               ParseResult &parse_result);
+	static bool TransformLikeAnyOrAll(PEGTransformer &transformer, ParseResult &parse_result);
 	static unique_ptr<ParsedExpression> TransformLikeClause(PEGTransformer &transformer, ParseResult &parse_result);
 	static unique_ptr<ParsedExpression> TransformEscapeClause(PEGTransformer &transformer, ParseResult &parse_result);
 	static string TransformLikeVariations(PEGTransformer &transformer, ParseResult &parse_result);

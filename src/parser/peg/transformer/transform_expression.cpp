@@ -844,6 +844,17 @@ unique_ptr<ParsedExpression> PEGTransformerFactory::TransformBetweenInLikeExpres
 		} else {
 			expr = std::move(between_in_like_expr);
 		}
+	} else if (between_in_like_expr->GetExpressionClass() == ExpressionClass::CONJUNCTION) {
+		// LIKE ANY/ALL: conjunction of LIKE function expressions, each missing its LHS
+		auto &conj_expr = between_in_like_expr->Cast<ConjunctionExpression>();
+		for (idx_t i = 0; i < conj_expr.children.size(); i++) {
+			auto &func_expr = conj_expr.children[i]->Cast<FunctionExpression>();
+			func_expr.children.insert(func_expr.children.begin(), expr->Copy());
+			if (has_not) {
+				TryNegateLikeFunction(func_expr.function_name);
+			}
+		}
+		expr = std::move(between_in_like_expr);
 	}
 	return expr;
 }
@@ -915,6 +926,40 @@ unique_ptr<ParsedExpression> PEGTransformerFactory::TransformBetweenClause(PEGTr
 	auto higher = transformer.Transform<unique_ptr<ParsedExpression>>(list_pr.Child<ListParseResult>(3));
 	auto result = make_uniq<BetweenExpression>(nullptr, std::move(lower), std::move(higher));
 	return std::move(result);
+}
+
+// LikeAnyAllClause <- LikeVariations LikeAnyOrAll Parens(List(Expression))
+unique_ptr<ParsedExpression> PEGTransformerFactory::TransformLikeAnyAllClause(PEGTransformer &transformer,
+                                                                              ParseResult &parse_result) {
+	auto &list_pr = parse_result.Cast<ListParseResult>();
+	// Child 0: LikeVariations
+	string like_variation = transformer.Transform<string>(list_pr.Child<ListParseResult>(0));
+	// Child 1: LikeAnyOrAll (true = ANY, false = ALL)
+	bool is_any = transformer.Transform<bool>(list_pr.Child<ListParseResult>(1));
+	// Child 2: Parens(List(Expression))
+	auto &parens_result = ExtractResultFromParens(list_pr.Child<ListParseResult>(2));
+	auto patterns = ExtractParseResultsFromList(parens_result);
+
+	ExpressionType conj_type = is_any ? ExpressionType::CONJUNCTION_OR : ExpressionType::CONJUNCTION_AND;
+
+	vector<unique_ptr<ParsedExpression>> like_exprs;
+	for (auto &pattern_ref : patterns) {
+		auto pattern_expr = transformer.Transform<unique_ptr<ParsedExpression>>(pattern_ref);
+		vector<unique_ptr<ParsedExpression>> children;
+		children.push_back(std::move(pattern_expr));
+		auto func = make_uniq<FunctionExpression>(like_variation, std::move(children));
+		func->is_operator = true;
+		like_exprs.push_back(std::move(func));
+	}
+
+	auto result = make_uniq<ConjunctionExpression>(conj_type, std::move(like_exprs));
+	return std::move(result);
+}
+
+// LikeAnyOrAll <- LikeAny / LikeAll
+bool PEGTransformerFactory::TransformLikeAnyOrAll(PEGTransformer &transformer, ParseResult &parse_result) {
+	auto &list_pr = parse_result.Cast<ListParseResult>();
+	return transformer.TransformEnum<bool>(list_pr.Child<ChoiceParseResult>(0).GetResult());
 }
 
 unique_ptr<ParsedExpression> PEGTransformerFactory::TransformLikeClause(PEGTransformer &transformer,
