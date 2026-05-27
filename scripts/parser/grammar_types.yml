@@ -358,6 +358,7 @@ Expression:
     - LambdaExpression
     - NullIfExpression
     - RowExpression
+    - RowExpressionArg
     - SubstringExpression
     - TrimExpression
     - TrimSource
@@ -722,6 +723,7 @@ String:
   type: "string"
   rules:
     - AttachAlias
+    - RowExpressionAlias
     - StringLiteral
     - DropOrSet
     - SequenceName

@@ -860,6 +860,9 @@ private:
 	static unique_ptr<ParsedExpression> TransformNullIfExpression(PEGTransformer &transformer,
 	                                                              ParseResult &parse_result);
 	static unique_ptr<ParsedExpression> TransformRowExpression(PEGTransformer &transformer, ParseResult &parse_result);
+	static unique_ptr<ParsedExpression> TransformRowExpressionArg(PEGTransformer &transformer,
+	                                                              ParseResult &parse_result);
+	static string TransformRowExpressionAlias(PEGTransformer &transformer, ParseResult &parse_result);
 	static unique_ptr<ParsedExpression> TransformSubstringExpression(PEGTransformer &transformer,
 	                                                                 ParseResult &parse_result);
 	static vector<unique_ptr<ParsedExpression>> TransformSubstringParameters(PEGTransformer &transformer,
