@@ -12,6 +12,7 @@
 #include "duckdb/parser/peg/keyword_helper.hpp"
 #include "duckdb/common/case_insensitive_map.hpp"
 #include "duckdb/common/exception/parser_exception.hpp"
+#include "duckdb/main/settings.hpp"
 #include "duckdb/parser/peg/tokenizer/base_tokenizer.hpp"
 #include "duckdb/parser/peg/peg_parser.hpp"
 #include "duckdb/parser/peg/transformer/parse_result.hpp"
@@ -791,8 +792,14 @@ public:
 			stripped_string = "0" + stripped_string;
 		}
 
+		// use C-style backslash escaping (e.g. '\\d+' means '\d+', '\t' means tab), matching Spark SQL behavior.
+		auto effective_type = string_info.type;
+		if (effective_type == SpecialStringCharacter::STANDARD) {
+			effective_type = SpecialStringCharacter::ESCAPE_STRING;
+		}
+
 		auto result = state.allocator.Allocate(
-		    make_uniq<StringLiteralParseResult>(stripped_string, string_info.type, start_offset));
+		    make_uniq<StringLiteralParseResult>(stripped_string, effective_type, start_offset));
 		result->name = name;
 		return result;
 	}
