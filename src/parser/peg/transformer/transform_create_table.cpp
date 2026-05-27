@@ -82,6 +82,9 @@ unique_ptr<CreateStatement> PEGTransformerFactory::TransformCreateTableStmt(PEGT
 		info->sort_keys = std::move(column_list.sort_keys);
 		info->options = std::move(column_list.options);
 	}
+	// Ignore PARTITIONED BY and SORTED BY — DuckDB does not support Spark-style partitioning
+	info->partition_keys.clear();
+	info->sort_keys.clear();
 	// On COMMIT is unused apart from checking whether it is ON COMMIT DELETE, which is unsupported
 	bool on_commit = false;
 	transformer.TransformOptional<bool>(list_pr, 4, on_commit);
