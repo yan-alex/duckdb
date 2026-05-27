@@ -244,7 +244,9 @@ ExtractExpression <- 'EXTRACT' Parens(ExtractArgument 'FROM' Expression)
 LambdaExpression <- 'LAMBDA' List(ColIdOrString) ':' Expression
 NullIfExpression <- 'NULLIF' Parens(Expression ',' Expression)
 PositionExpression <- 'POSITION' Parens(SingleExpression 'IN' SingleExpression)
-RowExpression <- 'ROW' Parens(List(Expression)?)
+RowExpression <- RowOrStruct Parens(List(RowExpressionArg)?)
+RowExpressionArg <- Expression RowExpressionAlias?
+RowExpressionAlias <- 'AS' ColId
 SubstringExpression <- 'SUBSTRING' Parens(SubstringArguments)
 SubstringArguments <- SubstringParameters / SubstringExpressionList
 SubstringExpressionList <- List(Expression)

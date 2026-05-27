@@ -2241,6 +2241,7 @@ unique_ptr<ParsedExpression> PEGTransformerFactory::TransformNullIfExpression(PE
 unique_ptr<ParsedExpression> PEGTransformerFactory::TransformRowExpression(PEGTransformer &transformer,
                                                                            ParseResult &parse_result) {
 	auto &list_pr = parse_result.Cast<ListParseResult>();
+	// Child 0: RowOrStruct keyword, Child 1: Parens(List(RowExpressionArg)?)
 	auto &extract_parens = ExtractResultFromParens(list_pr.Child<ListParseResult>(1));
 	auto &expr_list_opt = extract_parens.Cast<OptionalParseResult>();
 	if (!expr_list_opt.HasResult()) {
@@ -2249,11 +2250,37 @@ unique_ptr<ParsedExpression> PEGTransformerFactory::TransformRowExpression(PEGTr
 	}
 	auto expr_list = ExtractParseResultsFromList(expr_list_opt.GetResult());
 	vector<unique_ptr<ParsedExpression>> results;
+	bool has_alias = false;
 	for (auto expr : expr_list) {
-		results.push_back(transformer.Transform<unique_ptr<ParsedExpression>>(expr));
+		auto child = transformer.Transform<unique_ptr<ParsedExpression>>(expr);
+		if (!child->GetAlias().empty()) {
+			has_alias = true;
+		}
+		results.push_back(std::move(child));
 	}
-	auto func_expr = make_uniq<FunctionExpression>(INVALID_CATALOG, DEFAULT_SCHEMA, "row", std::move(results));
+	// If any argument has an AS alias, use struct_pack (named struct)
+	auto func_name = has_alias ? "struct_pack" : "row";
+	auto func_expr = make_uniq<FunctionExpression>(INVALID_CATALOG, DEFAULT_SCHEMA, func_name, std::move(results));
 	return std::move(func_expr);
+}
+
+unique_ptr<ParsedExpression> PEGTransformerFactory::TransformRowExpressionArg(PEGTransformer &transformer,
+                                                                              ParseResult &parse_result) {
+	auto &list_pr = parse_result.Cast<ListParseResult>();
+	// Child 0: Expression, Child 1: RowExpressionAlias?
+	auto expr = transformer.Transform<unique_ptr<ParsedExpression>>(list_pr.Child<ListParseResult>(0));
+	auto &alias_opt = list_pr.Child<OptionalParseResult>(1);
+	if (alias_opt.HasResult()) {
+		auto alias = transformer.Transform<string>(alias_opt.GetResult());
+		expr->SetAlias(alias);
+	}
+	return expr;
+}
+
+string PEGTransformerFactory::TransformRowExpressionAlias(PEGTransformer &transformer, ParseResult &parse_result) {
+	auto &list_pr = parse_result.Cast<ListParseResult>();
+	// Child 0: 'AS', Child 1: ColId
+	return transformer.Transform<string>(list_pr.Child<ListParseResult>(1));
 }
 
 unique_ptr<ParsedExpression> PEGTransformerFactory::TransformSubstringExpression(PEGTransformer &transformer,
