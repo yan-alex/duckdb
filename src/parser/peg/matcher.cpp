@@ -785,6 +785,12 @@ public:
 		    token.text.substr(string_info.prefix_len, token.text.length() - (string_info.prefix_len + suffix_len));
 		stripped_string = StringUtil::Replace(stripped_string, "''", "'");
 
+		// Hex string literals with an odd number of digits are padded with a leading zero
+		// (e.g. X'A' becomes X'0A'), matching Spark's behavior.
+		if (string_info.type == SpecialStringCharacter::HEXADECIMAL_STRING && stripped_string.size() % 2 != 0) {
+			stripped_string = "0" + stripped_string;
+		}
+
 		auto result = state.allocator.Allocate(
 		    make_uniq<StringLiteralParseResult>(stripped_string, string_info.type, start_offset));
 		result->name = name;
