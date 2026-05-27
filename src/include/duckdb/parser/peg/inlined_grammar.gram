@@ -888,7 +888,11 @@ OperatorLessThanEquals <- '<='
 OperatorGreaterThanEquals <- '>='
 # LEVEL 7
 BetweenInLikeExpression <- OtherOperatorExpression BetweenInLikeOp?
-BetweenInLikeOp <- 'NOT'? (BetweenClause / InClause / LikeClause)
+BetweenInLikeOp <- 'NOT'? (BetweenClause / InClause / LikeAnyAllClause / LikeClause)
+LikeAnyAllClause <- LikeVariations LikeAnyOrAll Parens(List(Expression))
+LikeAnyOrAll <- LikeAny / LikeAll
+LikeAny <- 'ANY'
+LikeAll <- 'ALL'
 LikeClause <- LikeVariations OtherOperatorExpression EscapeClause?
 EscapeClause <- 'ESCAPE' ComparisonExpression
 
