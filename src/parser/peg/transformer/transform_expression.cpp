@@ -1218,16 +1218,31 @@ unique_ptr<ParsedExpression> PEGTransformerFactory::TransformMultiplicativeExpre
 		if (factor == "/" && transformer.options.integer_division) {
 			factor = "//";
 		}
-		if (factor == "DIV" || factor == "div") {
-			factor = "//";
+		bool is_div = (factor == "DIV" || factor == "div");
+		if (is_div) {
+			// Spark DIV: CAST(TRUNC(a / b) AS BIGINT) — always truncates toward zero, returns BIGINT
+			auto right = transformer.Transform<unique_ptr<ParsedExpression>>(inner_list_pr.Child<ListParseResult>(1));
+			// Build a / b
+			vector<unique_ptr<ParsedExpression>> div_children;
+			div_children.push_back(std::move(expr));
+			div_children.push_back(std::move(right));
+			auto div_expr = make_uniq<FunctionExpression>("/", std::move(div_children));
+			div_expr->is_operator = true;
+			// Wrap in TRUNC(...)
+			vector<unique_ptr<ParsedExpression>> trunc_children;
+			trunc_children.push_back(std::move(div_expr));
+			auto trunc_expr = make_uniq<FunctionExpression>("trunc", std::move(trunc_children));
+			// Wrap in CAST(... AS BIGINT)
+			expr = make_uniq<CastExpression>(LogicalType::BIGINT, std::move(trunc_expr));
+		} else {
+			vector<unique_ptr<ParsedExpression>> factor_children;
+			factor_children.push_back(std::move(expr));
+			factor_children.push_back(
+			    transformer.Transform<unique_ptr<ParsedExpression>>(inner_list_pr.Child<ListParseResult>(1)));
+			auto func_expr = make_uniq<FunctionExpression>(std::move(factor), std::move(factor_children));
+			func_expr->is_operator = true;
+			expr = std::move(func_expr);
 		}
-		vector<unique_ptr<ParsedExpression>> factor_children;
-		factor_children.push_back(std::move(expr));
-		factor_children.push_back(
-		    transformer.Transform<unique_ptr<ParsedExpression>>(inner_list_pr.Child<ListParseResult>(1)));
-		auto func_expr = make_uniq<FunctionExpression>(std::move(factor), std::move(factor_children));
-		func_expr->is_operator = true;
-		expr = std::move(func_expr);
 	}
 	return expr;
 }
