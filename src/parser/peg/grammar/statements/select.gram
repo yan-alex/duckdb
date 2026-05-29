@@ -88,7 +88,7 @@ AtUnit <- 'VERSION' / 'TIMESTAMP'
 
 JoinClause <- RegularJoinClause / JoinWithoutOnClause
 RegularJoinClause <- 'ASOF'? JoinType? 'JOIN' TableRef JoinQualifier
-JoinWithoutOnClause <- JoinPrefix 'JOIN' TableRef
+JoinWithoutOnClause <- JoinPrefix 'JOIN' TableRef JoinQualifier?
 JoinQualifier <- OnClause / UsingClause
 OnClause <- 'ON' Expression
 UsingClause <- 'USING' Parens(List(ColumnName))
