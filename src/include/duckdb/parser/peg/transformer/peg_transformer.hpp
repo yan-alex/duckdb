@@ -853,6 +853,8 @@ private:
 	                                                               ParseResult &parse_result);
 	static unique_ptr<ParsedExpression> TransformExtractExpression(PEGTransformer &transformer,
 	                                                               ParseResult &parse_result);
+	static unique_ptr<ParsedExpression> TransformTimestampDiffExpression(PEGTransformer &transformer,
+	                                                                     ParseResult &parse_result);
 	static unique_ptr<ParsedExpression> TransformExtractArgument(PEGTransformer &transformer,
 	                                                             ParseResult &parse_result);
 	static unique_ptr<ParsedExpression> TransformLambdaExpression(PEGTransformer &transformer,

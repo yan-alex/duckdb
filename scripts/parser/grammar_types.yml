@@ -354,6 +354,7 @@ Expression:
     - TryExpression
     - ColumnsExpression
     - ExtractExpression
+    - TimestampDiffExpression
     - ExtractArgument
     - LambdaExpression
     - NullIfExpression

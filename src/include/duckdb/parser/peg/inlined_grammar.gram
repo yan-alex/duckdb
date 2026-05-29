@@ -611,6 +611,7 @@ ColumnNameKeyword <- 'BETWEEN' /
 'STRUCT' /
 'TIME' /
 'TIMESTAMP' /
+'TIMESTAMPDIFF' /
 'TREAT' /
 'TRIM' /
 'TRY_CAST' /
@@ -964,7 +965,8 @@ StepSliceBound <- ':' Expression?
 PostfixOperator <- '!'
 
 
-SpecialFunctionExpression <- CoalesceExpression / UnpackExpression / TryExpression / ColumnsExpression / ExtractExpression / LambdaExpression / NullIfExpression / PositionExpression / RowExpression / SubstringExpression / TrimExpression
+SpecialFunctionExpression <- CoalesceExpression / UnpackExpression / TryExpression / ColumnsExpression / ExtractExpression / TimestampDiffExpression / LambdaExpression / NullIfExpression / PositionExpression / RowExpression / SubstringExpression / TrimExpression
+TimestampDiffExpression <- 'TIMESTAMPDIFF' Parens(ExtractArgument ',' Expression ',' Expression)
 CoalesceExpression <- 'COALESCE' Parens(List(Expression))
 UnpackExpression <- 'UNPACK' Parens(Expression)
 TryExpression <- 'TRY' Parens(Expression)
@@ -1345,17 +1347,19 @@ AtUnit <- 'VERSION' / 'TIMESTAMP'
 
 JoinClause <- RegularJoinClause / JoinWithoutOnClause
 RegularJoinClause <- 'ASOF'? JoinType? 'JOIN' TableRef JoinQualifier
-JoinWithoutOnClause <- JoinPrefix 'JOIN' TableRef
+JoinWithoutOnClause <- JoinPrefix 'JOIN' TableRef JoinQualifier?
 JoinQualifier <- OnClause / UsingClause
 OnClause <- 'ON' Expression
 UsingClause <- 'USING' Parens(List(ColumnName))
 
-JoinType <- FullJoin / LeftJoin / RightJoin / SemiJoin / AntiJoin / InnerJoin
+JoinType <- FullJoin / LeftSemiJoin / LeftAntiJoin / LeftJoin / RightJoin / SemiJoin / AntiJoin / InnerJoin
 JoinPrefix <- CrossJoinPrefix / NaturalJoinPrefix / PositionalJoinPrefix
 CrossJoinPrefix <- 'CROSS'
 NaturalJoinPrefix <- 'NATURAL' JoinType?
 PositionalJoinPrefix <- 'POSITIONAL'
 FullJoin <- 'FULL' 'OUTER'?
+LeftSemiJoin <- 'LEFT' 'SEMI'
+LeftAntiJoin <- 'LEFT' 'ANTI'
 LeftJoin <- 'LEFT' 'OUTER'?
 RightJoin <- 'RIGHT' 'OUTER'?
 SemiJoin <- 'SEMI'
