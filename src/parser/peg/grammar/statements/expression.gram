@@ -205,7 +205,7 @@ AdditiveExpression <- MultiplicativeExpression (Term MultiplicativeExpression)*
 Term <- '+' / '-'
 # LEVEL 11
 MultiplicativeExpression <- ExponentiationExpression (Factor ExponentiationExpression)*
-Factor <- '*' / '/' / '//' / '%'
+Factor <- '*' / '/' / '//' / '%' / 'DIV'
 # LEVEL 12
 ExponentiationExpression <- CollateExpression (ExponentOperator CollateExpression)*
 ExponentOperator <- '^' / '**'

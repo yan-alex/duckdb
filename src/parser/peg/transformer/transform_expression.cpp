@@ -1218,6 +1218,9 @@ unique_ptr<ParsedExpression> PEGTransformerFactory::TransformMultiplicativeExpre
 		if (factor == "/" && transformer.options.integer_division) {
 			factor = "//";
 		}
+		if (factor == "DIV" || factor == "div") {
+			factor = "//";
+		}
 		vector<unique_ptr<ParsedExpression>> factor_children;
 		factor_children.push_back(std::move(expr));
 		factor_children.push_back(

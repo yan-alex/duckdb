@@ -431,6 +431,7 @@ void PEGKeywordHelper::InitializeKeywordMaps() { // Renamed for clarity
 	colname_keyword_map.insert("columns");
 	colname_keyword_map.insert("dec");
 	colname_keyword_map.insert("decimal");
+	colname_keyword_map.insert("div");
 	colname_keyword_map.insert("exists");
 	colname_keyword_map.insert("extract");
 	colname_keyword_map.insert("float");
