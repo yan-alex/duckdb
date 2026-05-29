@@ -101,6 +101,7 @@ EXCLUDED_RULES = {
     "OperatorLiteral",
     "WithSchemaMode",
     "SchemaModeName",
+    "PositionSeparator",
 }
 
 

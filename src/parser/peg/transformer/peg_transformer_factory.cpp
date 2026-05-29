@@ -1055,6 +1055,8 @@ void PEGTransformerFactory::RegisterEnums() {
 	RegisterEnum<OrderByNullType>("NullsLast", OrderByNullType::NULLS_LAST);
 
 	RegisterEnum<JoinType>("FullJoin", JoinType::OUTER);
+	RegisterEnum<JoinType>("LeftSemiJoin", JoinType::SEMI);
+	RegisterEnum<JoinType>("LeftAntiJoin", JoinType::ANTI);
 	RegisterEnum<JoinType>("LeftJoin", JoinType::LEFT);
 	RegisterEnum<JoinType>("RightJoin", JoinType::RIGHT);
 	RegisterEnum<JoinType>("SemiJoin", JoinType::SEMI);
