@@ -93,12 +93,14 @@ JoinQualifier <- OnClause / UsingClause
 OnClause <- 'ON' Expression
 UsingClause <- 'USING' Parens(List(ColumnName))
 
-JoinType <- FullJoin / LeftJoin / RightJoin / SemiJoin / AntiJoin / InnerJoin
+JoinType <- FullJoin / LeftSemiJoin / LeftAntiJoin / LeftJoin / RightJoin / SemiJoin / AntiJoin / InnerJoin
 JoinPrefix <- CrossJoinPrefix / NaturalJoinPrefix / PositionalJoinPrefix
 CrossJoinPrefix <- 'CROSS'
 NaturalJoinPrefix <- 'NATURAL' JoinType?
 PositionalJoinPrefix <- 'POSITIONAL'
 FullJoin <- 'FULL' 'OUTER'?
+LeftSemiJoin <- 'LEFT' 'SEMI'
+LeftAntiJoin <- 'LEFT' 'ANTI'
 LeftJoin <- 'LEFT' 'OUTER'?
 RightJoin <- 'RIGHT' 'OUTER'?
 SemiJoin <- 'SEMI'
