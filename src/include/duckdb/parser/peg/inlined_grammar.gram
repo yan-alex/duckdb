@@ -972,7 +972,8 @@ ColumnsExpression <- '*'? 'COLUMNS' Parens(Expression)
 ExtractExpression <- 'EXTRACT' Parens(ExtractArgument 'FROM' Expression)
 LambdaExpression <- 'LAMBDA' List(ColIdOrString) ':' Expression
 NullIfExpression <- 'NULLIF' Parens(Expression ',' Expression)
-PositionExpression <- 'POSITION' Parens(SingleExpression 'IN' SingleExpression)
+PositionExpression <- 'POSITION' Parens(SingleExpression PositionSeparator SingleExpression)
+PositionSeparator <- 'IN' / ','
 RowExpression <- RowOrStruct Parens(List(RowExpressionArg)?)
 RowExpressionArg <- Expression RowExpressionAlias?
 RowExpressionAlias <- 'AS' ColId
