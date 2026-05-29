@@ -2441,6 +2441,10 @@ unique_ptr<ParsedExpression> PEGTransformerFactory::TransformTypeLiteral(PEGTran
 		type = LogicalType::UNBOUND(make_uniq<TypeExpression>(colid, vector<unique_ptr<ParsedExpression>>()));
 	}
 	auto string_literal = list_pr.Child<StringLiteralParseResult>(1).result;
+	// Year-only date literal: date'0015' → date'0015-01-01'
+	if (type.id() == LogicalTypeId::DATE && string_literal.find('-') == string::npos) {
+		string_literal += "-01-01";
+	}
 	auto child = make_uniq<ConstantExpression>(Value(string_literal));
 	auto result = make_uniq<CastExpression>(type, std::move(child));
 	return std::move(result);
