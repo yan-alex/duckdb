@@ -460,6 +460,7 @@ void PEGKeywordHelper::InitializeKeywordMaps() { // Renamed for clarity
 	colname_keyword_map.insert("substring");
 	colname_keyword_map.insert("time");
 	colname_keyword_map.insert("timestamp");
+	colname_keyword_map.insert("timestampdiff");
 	colname_keyword_map.insert("treat");
 	colname_keyword_map.insert("trim");
 	colname_keyword_map.insert("try_cast");

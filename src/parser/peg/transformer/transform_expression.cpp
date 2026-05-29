@@ -2217,6 +2217,20 @@ unique_ptr<ParsedExpression> PEGTransformerFactory::TransformExtractExpression(P
 	return make_uniq<FunctionExpression>(INVALID_CATALOG, "main", "date_part", std::move(expr_children));
 }
 
+unique_ptr<ParsedExpression> PEGTransformerFactory::TransformTimestampDiffExpression(PEGTransformer &transformer,
+                                                                                     ParseResult &parse_result) {
+	auto &list_pr = parse_result.Cast<ListParseResult>();
+	auto &inner = ExtractResultFromParens(list_pr.Child<ListParseResult>(1)).Cast<ListParseResult>();
+	vector<unique_ptr<ParsedExpression>> expr_children;
+	// ExtractArgument (date part) → first arg
+	expr_children.push_back(transformer.Transform<unique_ptr<ParsedExpression>>(inner.Child<ListParseResult>(0)));
+	// Expression 1 (start timestamp) → second arg
+	expr_children.push_back(transformer.Transform<unique_ptr<ParsedExpression>>(inner.Child<ListParseResult>(2)));
+	// Expression 2 (end timestamp) → third arg
+	expr_children.push_back(transformer.Transform<unique_ptr<ParsedExpression>>(inner.Child<ListParseResult>(4)));
+	return make_uniq<FunctionExpression>("datediff", std::move(expr_children));
+}
+
 unique_ptr<ParsedExpression> PEGTransformerFactory::TransformExtractArgument(PEGTransformer &transformer,
                                                                              ParseResult &parse_result) {
 	auto &list_pr = parse_result.Cast<ListParseResult>();

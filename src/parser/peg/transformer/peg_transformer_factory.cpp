@@ -625,6 +625,7 @@ void PEGTransformerFactory::RegisterExpression() {
 	REGISTER_TRANSFORM(TransformTryExpression);
 	REGISTER_TRANSFORM(TransformColumnsExpression);
 	REGISTER_TRANSFORM(TransformExtractExpression);
+	REGISTER_TRANSFORM(TransformTimestampDiffExpression);
 	REGISTER_TRANSFORM(TransformExtractArgument);
 	REGISTER_TRANSFORM(TransformLambdaExpression);
 	REGISTER_TRANSFORM(TransformNullIfExpression);
