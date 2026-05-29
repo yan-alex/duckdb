@@ -913,6 +913,21 @@ unique_ptr<TableRef> PEGTransformerFactory::TransformJoinWithoutOnClause(PEGTran
 	result->ref_type = join_prefix.ref_type;
 	result->type = join_prefix.join_type;
 	result->right = std::move(table_ref);
+	// Handle optional JoinQualifier (e.g., CROSS JOIN ... ON becomes INNER JOIN)
+	auto &qualifier_opt = list_pr.Child<OptionalParseResult>(3);
+	if (qualifier_opt.HasResult()) {
+		auto join_qualifier = transformer.Transform<JoinQualifier>(qualifier_opt.GetResult());
+		if (join_qualifier.on_clause) {
+			result->condition = std::move(join_qualifier.on_clause);
+		} else if (!join_qualifier.using_columns.empty()) {
+			result->using_columns = std::move(join_qualifier.using_columns);
+		}
+		// CROSS JOIN with a condition is semantically an INNER JOIN
+		if (result->ref_type == JoinRefType::CROSS) {
+			result->ref_type = JoinRefType::REGULAR;
+			result->type = JoinType::INNER;
+		}
+	}
 	return std::move(result);
 }
 
