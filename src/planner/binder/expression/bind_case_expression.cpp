@@ -3,6 +3,7 @@
 #include "duckdb/planner/expression/bound_cast_expression.hpp"
 #include "duckdb/planner/expression_binder.hpp"
 #include "duckdb/planner/binder.hpp"
+#include "duckdb/main/settings.hpp"
 
 namespace duckdb {
 
@@ -24,6 +25,19 @@ BindResult ExpressionBinder::BindExpression(CaseExpression &expr, idx_t depth) {
 	for (auto &check : expr.case_checks) {
 		auto &then_expr = BoundExpression::GetExpression(*check.then_expr);
 		auto then_type = ExpressionBinder::GetExpressionReturnType(*then_expr);
+		if (Settings::Get<SparkModeSetting>(context)) {
+			// Spark coerces VARCHAR mixed with FLOAT/DECIMAL to DOUBLE - a third type that the
+			// cost-based cast registry cannot produce on its own (it only ever picks one of the
+			// two input types). Override the unification result for that specific Spark case.
+			const bool varchar_left = return_type.id() == LogicalTypeId::VARCHAR;
+			const bool varchar_right = then_type.id() == LogicalTypeId::VARCHAR;
+			const auto &other = varchar_left ? then_type : return_type;
+			if ((varchar_left != varchar_right) &&
+			    (other.id() == LogicalTypeId::FLOAT || other.id() == LogicalTypeId::DECIMAL)) {
+				return_type = LogicalType::DOUBLE;
+				continue;
+			}
+		}
 		if (!LogicalType::TryGetMaxLogicalType(context, return_type, then_type, return_type)) {
 			throw BinderException(
 			    expr, "Cannot mix values of type %s and %s in CASE expression - an explicit cast is required",
