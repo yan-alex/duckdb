@@ -1597,6 +1597,16 @@ struct SchemaSetting {
 	static Value GetSetting(const ClientContext &context);
 };
 
+struct SparkModeSetting {
+	using RETURN_TYPE = bool;
+	static constexpr const char *Name = "spark_mode";
+	static constexpr const char *Description = "Enable Spark SQL compatibility (e.g. ALL as column name with GROUP BY ALL fallback)";
+	static constexpr const char *InputType = "BOOLEAN";
+	static constexpr const char *DefaultValue = "false";
+	static constexpr SettingScopeTarget Scope = SettingScopeTarget::GLOBAL_DEFAULT;
+	static constexpr idx_t SettingIndex = NEXT_SETTING_INDEX();
+};
+
 struct SearchPathSetting {
 	using RETURN_TYPE = string;
 	static constexpr const char *Name = "search_path";
