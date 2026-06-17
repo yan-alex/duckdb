@@ -950,6 +950,18 @@ static bool TryCombineViaImplicitCast(LogicalTypeResolver &logical_type_resolver
 static bool TryGetMaxLogicalTypeInternal(LogicalTypeResolver &logical_type_resolver, const LogicalType &left,
                                          const LogicalType &right, LogicalType &result) {
 	auto &optional_context = logical_type_resolver.context;
+	if (optional_context &&
+	    Settings::Get<DialectCompatibilityModeSetting>(*optional_context) == DialectCompatibilityMode::SPARK) {
+		// Spark promotes a DECIMAL combined with a string to DOUBLE (e.g. in CASE/IF/UNION/comparisons)
+		auto is_string = [](const LogicalType &type) {
+			return type.id() == LogicalTypeId::VARCHAR || type.id() == LogicalTypeId::STRING_LITERAL;
+		};
+		if ((left.id() == LogicalTypeId::DECIMAL && is_string(right)) ||
+		    (right.id() == LogicalTypeId::DECIMAL && is_string(left))) {
+			result = LogicalType::DOUBLE;
+			return true;
+		}
+	}
 	// with a context, check all combine rules, including ones registered by extensions
 	// without one, check only the built-in rules
 	bool success;
