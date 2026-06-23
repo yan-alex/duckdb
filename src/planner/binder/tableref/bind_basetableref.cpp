@@ -6,6 +6,10 @@
 #include "duckdb/main/extension_helper.hpp"
 #include "duckdb/parser/query_node/select_node.hpp"
 #include "duckdb/parser/statement/select_statement.hpp"
+#include "duckdb/parser/common_table_expression_info.hpp"
+#include "duckdb/parser/expression/columnref_expression.hpp"
+#include "duckdb/common/enums/dialect_compatibility_mode.hpp"
+#include "duckdb/main/settings.hpp"
 #include "duckdb/parser/tableref/basetableref.hpp"
 #include "duckdb/parser/tableref/subqueryref.hpp"
 #include "duckdb/parser/tableref/table_function_ref.hpp"
@@ -291,6 +295,26 @@ BoundStatement Binder::Bind(BaseTableRef &ref) {
 
 		// The view may contain CTEs, but maybe only in the cte_map, so we need create CTE nodes for them
 		auto query = view_catalog_entry.GetQuery().Copy();
+		if (Settings::Get<DialectCompatibilityModeSetting>(context) == DialectCompatibilityMode::SPARK &&
+		    !view_catalog_entry.aliases.empty()) {
+			// Spark column-count pinning: wrap the (throwaway) query copy in a CTE that projects exactly the
+			// view's pinned columns, so a later-widened `*` is truncated back at bind time while column types
+			// still evolve. The stored view query is untouched, so SHOW CREATE / View Text stay the user's SQL.
+			// `aliases` holds the user column list, or the creation-time `*` expansion captured at create-bind.
+			auto &select_stmt = query->Cast<SelectStatement>();
+			auto wrapper = make_uniq<SelectNode>();
+			auto cte_info = make_uniq<CommonTableExpressionInfo>();
+			cte_info->aliases = view_catalog_entry.aliases;
+			cte_info->query_node = std::move(select_stmt.node);
+			wrapper->cte_map.map.insert(Identifier("__spark_view_columns"), std::move(cte_info));
+			for (auto &col : view_catalog_entry.aliases) {
+				wrapper->select_list.push_back(make_uniq<ColumnRefExpression>(col));
+			}
+			auto base_ref = make_uniq<BaseTableRef>();
+			base_ref->table_name = "__spark_view_columns";
+			wrapper->from_table = std::move(base_ref);
+			select_stmt.node = std::move(wrapper);
+		}
 		SubqueryRef subquery(unique_ptr_cast<SQLStatement, SelectStatement>(std::move(query)));
 
 		subquery.alias = ref.alias;

@@ -49,6 +49,8 @@
 #include "duckdb/common/type_visitor.hpp"
 #include "duckdb/function/table_macro_function.hpp"
 #include "duckdb/main/settings.hpp"
+#include "duckdb/common/enums/dialect_compatibility_mode.hpp"
+#include "duckdb/common/string_util.hpp"
 #include "duckdb/parser/expression/type_expression.hpp"
 #include "duckdb/planner/expression/bound_constant_expression.hpp"
 
@@ -231,6 +233,16 @@ void Binder::BindCreateViewInfo(CreateViewInfo &base) {
 		dependencies = base.dependencies;
 	}
 	BindView(context, *base.query, base.catalog, base.schema, dependencies, base.aliases, base.types, base.names);
+	if (Settings::Get<DialectCompatibilityModeSetting>(context) == DialectCompatibilityMode::SPARK) {
+		// A no-list Spark pin view (WITH SCHEMA BINDING/COMPENSATION/TYPE EVOLUTION) carries a marker alias
+		// left by the transformer, which cannot expand `*`. Replace it with the freshly-bound `*` expansion so
+		// the view's column count is pinned to its creation-time columns at every later reference, while column
+		// types keep evolving. Marker: duckdb-fork-spark-compat .../transformer/transform_create_view.cpp.
+		if (base.aliases.size() == 1 && !base.names.empty() &&
+		    StringUtil::CIEquals(base.aliases[0].GetIdentifierName(), "__spark_pin_view")) {
+			base.aliases = base.names;
+		}
+	}
 }
 
 SchemaCatalogEntry &Binder::BindCreateFunctionInfo(CreateInfo &info) {
