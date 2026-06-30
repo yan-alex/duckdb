@@ -742,6 +742,9 @@ bool StarExpression::Equals(const ParsedExpression &other) const {
 	if (relation_name != other_p.relation_name) {
 		return false;
 	}
+	if (relation_names != other_p.relation_names) {
+		return false;
+	}
 	if (exclude_list != other_p.exclude_list) {
 		return false;
 	}
@@ -772,6 +775,9 @@ bool StarExpression::Equals(const ParsedExpression &other) const {
 hash_t StarExpression::Hash() const {
 	hash_t hash = ParsedExpression::Hash();
 	hash = CombineHash(hash, relation_name.Hash());
+	for (auto &entry : relation_names) {
+		hash = CombineHash(hash, entry.Hash());
+	}
 	hash = CombineHash(hash, duckdb::Hash<bool>(columns));
 	return hash;
 }
@@ -779,6 +785,7 @@ hash_t StarExpression::Hash() const {
 unique_ptr<ParsedExpression> StarExpression::Copy() const {
 	auto copy = duckdb::unique_ptr<StarExpression>(new StarExpression());
 	copy->relation_name = relation_name;
+	copy->relation_names = relation_names;
 	copy->exclude_list = exclude_list;
 	for (auto &entry : replace_list) {
 		copy->replace_list[entry.first] = entry.second->Copy();

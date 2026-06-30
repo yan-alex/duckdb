@@ -32,6 +32,12 @@ public:
 	Identifier &RelationNameMutable() {
 		return relation_name;
 	}
+	const vector<Identifier> &RelationNames() const {
+		return relation_names;
+	}
+	vector<Identifier> &RelationNamesMutable() {
+		return relation_names;
+	}
 	const qualified_column_set_t &ExcludeList() const {
 		return exclude_list;
 	}
@@ -85,6 +91,9 @@ public:
 private:
 	//! The relation name in case of tbl.*, or empty if this is a normal *
 	Identifier relation_name;
+	//! Full multi-part qualifier in case of schema.tbl.* / tbl.struct_col.* (Spark); empty otherwise.
+	//! Not serialized: stars are expanded into column references during binding.
+	vector<Identifier> relation_names;
 	//! List of columns to exclude from the STAR expression
 	qualified_column_set_t exclude_list;
 	//! List of columns to replace with another expression

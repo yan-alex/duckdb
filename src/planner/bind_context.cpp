@@ -16,6 +16,8 @@
 #include "duckdb/catalog/catalog_entry/table_catalog_entry.hpp"
 #include "duckdb/planner/expression_binder/constant_binder.hpp"
 #include "duckdb/planner/binder.hpp"
+#include "duckdb/common/enums/dialect_compatibility_mode.hpp"
+#include "duckdb/main/settings.hpp"
 
 #include <algorithm>
 
@@ -550,46 +552,12 @@ void BindContext::GenerateAllColumnExpressions(StarExpression &expr,
 			}
 		}
 	} else {
-		// SELECT tbl.* case
-		// SELECT struct.* case
-		ErrorData error;
-		auto binding = GetBinding(expr.RelationName(), error);
-		bool is_struct_ref = false;
-		if (!binding) {
-			binding = GetMatchingBinding(expr.RelationName(), expr);
-			if (!binding) {
-				error.Throw();
-			}
-			is_struct_ref = true;
-		}
-		auto &binding_alias = binding->GetBindingAlias();
-		auto &column_names = binding->GetColumnNames();
-		auto &column_types = binding->GetColumnTypes();
-
-		if (is_struct_ref) {
-			auto col_idx = binding->GetBindingIndex(expr.RelationName());
-			auto col_type = column_types[col_idx];
-			if (col_type.id() != LogicalTypeId::STRUCT) {
-				throw BinderException(StringUtil::Format(
-				    "Cannot extract field from expression \"%s\" because it is not a struct", expr.ToString()));
-			}
-			auto &struct_children = StructType::GetChildTypes(col_type);
-			vector<Identifier> column_names(3);
-			column_names[0] = binding->GetAlias();
-			column_names[1] = expr.RelationName();
-			for (auto &child : struct_children) {
-				QualifiedColumnName qualified_name(child.first);
-				if (CheckExclusionList(expr, qualified_name, exclusion_info)) {
-					continue;
-				}
-				column_names[2] = child.first;
-				unique_ptr<ParsedExpression> new_expr = make_uniq<ColumnRefExpression>(column_names);
-				if (HandleRename(expr, qualified_name, new_expr, exclusion_info)) {
-					new_select_list.push_back(std::move(new_expr));
-				}
-			}
-		} else {
-			for (auto &column_name : column_names) {
+		// Resolved-relation star: SELECT tbl.* / schema.tbl.* / struct_col.* / tbl.struct_col.* ...
+		// Both forms reduce to a binding plus an optional struct_path navigating into one of its
+		// columns; these emitters produce the expanded column references for each.
+		auto emit_table_columns = [&](Binding &binding) {
+			auto &binding_alias = binding.GetBindingAlias();
+			for (auto &column_name : binding.GetColumnNames()) {
 				QualifiedColumnName qualified_name(binding_alias, column_name);
 				if (CheckExclusionList(expr, qualified_name, exclusion_info)) {
 					continue;
@@ -599,6 +567,110 @@ void BindContext::GenerateAllColumnExpressions(StarExpression &expr,
 				if (HandleRename(expr, qualified_name, new_expr, exclusion_info)) {
 					new_select_list.push_back(std::move(new_expr));
 				}
+			}
+		};
+		// struct_path = [struct_column, nested_field...]; expands the leaf struct's fields.
+		auto emit_struct_fields = [&](Binding &binding, const vector<Identifier> &struct_path) {
+			column_t col_idx = 0;
+			if (!binding.TryGetBindingIndex(struct_path[0], col_idx)) {
+				binding.ColumnNotFoundError(struct_path[0]).Throw();
+			}
+			auto col_type = binding.GetColumnTypes()[col_idx];
+			for (idx_t i = 1; i < struct_path.size(); i++) {
+				bool found = false;
+				if (col_type.id() == LogicalTypeId::STRUCT) {
+					for (auto &child : StructType::GetChildTypes(col_type)) {
+						if (child.first == struct_path[i]) {
+							col_type = child.second;
+							found = true;
+							break;
+						}
+					}
+				}
+				if (!found) {
+					throw BinderException(StringUtil::Format(
+					    "Cannot extract field from expression \"%s\" because it is not a struct", expr.ToString()));
+				}
+			}
+			if (col_type.id() != LogicalTypeId::STRUCT) {
+				throw BinderException(StringUtil::Format(
+				    "Cannot extract field from expression \"%s\" because it is not a struct", expr.ToString()));
+			}
+			vector<Identifier> base_names;
+			base_names.push_back(binding.GetAlias());
+			for (auto &part : struct_path) {
+				base_names.push_back(part);
+			}
+			for (auto &child : StructType::GetChildTypes(col_type)) {
+				QualifiedColumnName qualified_name(child.first);
+				if (CheckExclusionList(expr, qualified_name, exclusion_info)) {
+					continue;
+				}
+				auto names = base_names;
+				names.push_back(child.first);
+				unique_ptr<ParsedExpression> new_expr = make_uniq<ColumnRefExpression>(names);
+				if (HandleRename(expr, qualified_name, new_expr, exclusion_info)) {
+					new_select_list.push_back(std::move(new_expr));
+				}
+			}
+		};
+
+		if (Settings::Get<DialectCompatibilityModeSetting>(binder.context) == DialectCompatibilityMode::SPARK &&
+		    expr.RelationNames().size() > 1) {
+			// Spark multi-part qualifier: schema.tbl.* / catalog.schema.tbl.* / tbl.struct_col.* / col.field.*
+			// Disambiguation needs the catalog, so resolve the longest table-binding prefix here; any
+			// remaining parts navigate into a struct column of that binding.
+			auto &qualifiers = expr.RelationNames();
+			optional_ptr<Binding> binding;
+			idx_t struct_start = 0;
+			idx_t max_prefix = qualifiers.size() < 3 ? qualifiers.size() : 3;
+			for (idx_t len = max_prefix; len >= 1; len--) {
+				BindingAlias alias;
+				if (len == 1) {
+					alias = BindingAlias(qualifiers[0]);
+				} else if (len == 2) {
+					alias = BindingAlias(qualifiers[0], qualifiers[1]);
+				} else {
+					alias = BindingAlias(qualifiers[0], qualifiers[1], qualifiers[2]);
+				}
+				ErrorData probe_error;
+				binding = GetBinding(alias, probe_error);
+				if (binding) {
+					struct_start = len;
+					break;
+				}
+			}
+			if (binding) {
+				vector<Identifier> struct_path;
+				for (idx_t i = struct_start; i < qualifiers.size(); i++) {
+					struct_path.push_back(qualifiers[i]);
+				}
+				if (struct_path.empty()) {
+					emit_table_columns(*binding);
+				} else {
+					emit_struct_fields(*binding, struct_path);
+				}
+			} else {
+				// no table-binding prefix matched: the first part is a struct column of some binding
+				binding = GetMatchingBinding(qualifiers[0], expr);
+				if (!binding) {
+					throw BinderException("Cannot resolve star expression \"%s\"", expr.ToString());
+				}
+				emit_struct_fields(*binding, qualifiers);
+			}
+		} else {
+			ErrorData error;
+			auto binding = GetBinding(expr.RelationName(), error);
+			if (binding) {
+				emit_table_columns(*binding);
+			} else {
+				binding = GetMatchingBinding(expr.RelationName(), expr);
+				if (!binding) {
+					error.Throw();
+				}
+				vector<Identifier> struct_path;
+				struct_path.push_back(expr.RelationName());
+				emit_struct_fields(*binding, struct_path);
 			}
 		}
 	}
