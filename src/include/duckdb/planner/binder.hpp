@@ -547,6 +547,9 @@ private:
 
 	void PlanSubqueries(unique_ptr<Expression> &expr, unique_ptr<LogicalOperator> &root);
 	unique_ptr<Expression> PlanSubquery(BoundSubqueryExpression &expr, unique_ptr<LogicalOperator> &root);
+	void PlanJoinConditionSubqueries(unique_ptr<Expression> &expr, unique_ptr<LogicalOperator> &left,
+	                                 unique_ptr<LogicalOperator> &right, const unordered_set<TableIndex> &left_bindings,
+	                                 const unordered_set<TableIndex> &right_bindings);
 	unique_ptr<LogicalOperator> PlanLateralJoin(unique_ptr<LogicalOperator> left, unique_ptr<LogicalOperator> right,
 	                                            CorrelatedColumns &correlated_columns,
 	                                            JoinType join_type = JoinType::INNER,

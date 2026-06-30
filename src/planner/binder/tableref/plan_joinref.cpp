@@ -1,11 +1,14 @@
+#include "duckdb/common/enums/dialect_compatibility_mode.hpp"
 #include "duckdb/execution/expression_executor.hpp"
 #include "duckdb/main/client_context.hpp"
+#include "duckdb/main/settings.hpp"
 #include "duckdb/optimizer/optimizer.hpp"
 #include "duckdb/planner/binder.hpp"
 #include "duckdb/planner/expression/bound_columnref_expression.hpp"
 #include "duckdb/planner/expression/bound_comparison_expression.hpp"
 #include "duckdb/planner/expression/bound_constant_expression.hpp"
 #include "duckdb/planner/expression/bound_function_expression.hpp"
+#include "duckdb/planner/expression/bound_subquery_expression.hpp"
 #include "duckdb/planner/expression_binder/lateral_binder.hpp"
 #include "duckdb/planner/expression_iterator.hpp"
 #include "duckdb/planner/operator/logical_any_join.hpp"
@@ -360,6 +363,40 @@ unique_ptr<LogicalOperator> LogicalComparisonJoin::CreateJoin(ClientContext &con
 	                                         std::move(conditions));
 }
 
+void Binder::PlanJoinConditionSubqueries(unique_ptr<Expression> &expr_ptr, unique_ptr<LogicalOperator> &left,
+                                         unique_ptr<LogicalOperator> &right,
+                                         const unordered_set<TableIndex> &left_bindings,
+                                         const unordered_set<TableIndex> &right_bindings) {
+	if (!expr_ptr) {
+		return;
+	}
+	auto &expr = *expr_ptr;
+	ExpressionIterator::EnumerateChildren(expr, [&](unique_ptr<Expression> &child) {
+		PlanJoinConditionSubqueries(child, left, right, left_bindings, right_bindings);
+	});
+	if (expr.GetExpressionClass() != ExpressionClass::BOUND_SUBQUERY) {
+		return;
+	}
+	auto &subquery = expr.Cast<BoundSubqueryExpression>();
+	// determine which side of the join the subquery correlates to from its outer column bindings
+	bool has_left = false;
+	bool has_right = false;
+	for (auto &correlated : subquery.GetBinder()->correlated_columns) {
+		auto side = JoinSide::GetJoinSide(correlated.binding.table_index, left_bindings, right_bindings);
+		if (side == JoinSide::LEFT) {
+			has_left = true;
+		} else if (side == JoinSide::RIGHT) {
+			has_right = true;
+		}
+	}
+	if (has_left && has_right) {
+		throw BinderException("Correlated subquery in a join condition cannot reference both sides of the join");
+	}
+	// uncorrelated subqueries decorrelate fine against either child; default to the left
+	auto &root = has_right ? right : left;
+	expr_ptr = PlanSubquery(subquery, root);
+}
+
 unique_ptr<LogicalOperator> Binder::CreatePlan(BoundJoinRef &ref) {
 	auto old_is_outside_flattened = is_outside_flattened;
 	// Plan laterals from outermost to innermost
@@ -414,6 +451,17 @@ unique_ptr<LogicalOperator> Binder::CreatePlan(BoundJoinRef &ref) {
 		}
 		filter->AddChild(std::move(root));
 		return std::move(filter);
+	}
+	if (Settings::Get<DialectCompatibilityModeSetting>(context) == DialectCompatibilityMode::SPARK) {
+		if (ref.type != JoinType::INNER && ref.ref_type == JoinRefType::REGULAR && ref.condition &&
+		    ref.condition->HasSubquery()) {
+			// decorrelate subqueries embedded in a non-inner join condition against the side they
+			// correlate to, so the condition is subquery-free before the join operator is built
+			unordered_set<TableIndex> left_bindings, right_bindings;
+			LogicalJoin::GetTableReferences(*left, left_bindings);
+			LogicalJoin::GetTableReferences(*right, right_bindings);
+			PlanJoinConditionSubqueries(ref.condition, left, right, left_bindings, right_bindings);
+		}
 	}
 	// now create the join operator from the join condition
 	auto result = LogicalComparisonJoin::CreateJoin(context, ref.type, ref.ref_type, std::move(left), std::move(right),
