@@ -21,6 +21,7 @@
 #include "duckdb/parser/expression/subquery_expression.hpp"
 #include "duckdb/parser/parsed_data/create_index_info.hpp"
 #include "duckdb/parser/parsed_data/create_macro_info.hpp"
+#include "duckdb/parser/parsed_data/create_schema_info.hpp"
 #include "duckdb/parser/parsed_data/create_trigger_info.hpp"
 #include "duckdb/parser/parsed_data/create_secret_info.hpp"
 #include "duckdb/parser/parsed_data/create_view_info.hpp"
@@ -49,6 +50,7 @@
 #include "duckdb/common/type_visitor.hpp"
 #include "duckdb/function/table_macro_function.hpp"
 #include "duckdb/main/settings.hpp"
+#include "duckdb/common/enums/dialect_compatibility_mode.hpp"
 #include "duckdb/parser/expression/type_expression.hpp"
 #include "duckdb/planner/expression/bound_constant_expression.hpp"
 
@@ -156,6 +158,22 @@ void Binder::SearchSchema(CreateInfo &info) {
 
 SchemaCatalogEntry &Binder::BindSchema(CreateInfo &info) {
 	SearchSchema(info);
+	if (Settings::Get<DialectCompatibilityModeSetting>(context) == DialectCompatibilityMode::SPARK) {
+		// Spark global temporary views live in the always-present `global_temp` database (the fork transformer
+		// routes them into a `global_temp` schema). Create that schema on demand so the view has a home. It is a
+		// system-managed namespace, so it is created via the system transaction (binding runs read-only).
+		if (StringUtil::CIEquals(info.schema.GetIdentifierName(), "global_temp")) {
+			auto &global_temp_catalog = Catalog::GetCatalog(context, info.catalog);
+			if (!global_temp_catalog.GetSchema(context, info.schema, OnEntryNotFound::RETURN_NULL)) {
+				CreateSchemaInfo global_temp_info;
+				global_temp_info.catalog = info.catalog;
+				global_temp_info.schema = info.schema;
+				global_temp_info.on_conflict = OnCreateConflict::IGNORE_ON_CONFLICT;
+				global_temp_catalog.CreateSchema(
+				    CatalogTransaction::GetSystemTransaction(global_temp_catalog.GetDatabase()), global_temp_info);
+			}
+		}
+	}
 	// fetch the schema in which we want to create the object
 	auto &schema_obj = Catalog::GetSchema(context, info.catalog, info.schema);
 	D_ASSERT(schema_obj.type == CatalogType::SCHEMA_ENTRY);
