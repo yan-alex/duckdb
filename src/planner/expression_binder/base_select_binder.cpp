@@ -11,6 +11,9 @@
 #include "duckdb/planner/expression/bound_case_expression.hpp"
 #include "duckdb/planner/query_node/bound_select_node.hpp"
 #include "duckdb/planner/expression_binder/select_bind_state.hpp"
+#include "duckdb/parser/expression/function_expression.hpp"
+#include "duckdb/common/enums/dialect_compatibility_mode.hpp"
+#include "duckdb/main/settings.hpp"
 
 namespace duckdb {
 
@@ -38,6 +41,40 @@ BindResult BaseSelectBinder::BindExpression(unique_ptr<ParsedExpression> &expr_p
 	default:
 		return ExpressionBinder::BindExpression(expr_ptr, depth, root_expression);
 	}
+}
+
+static bool IsSparkCommutativeOperator(const FunctionExpression &func) {
+	if (!func.IsOperator() || func.GetArguments().size() != 2) {
+		return false;
+	}
+	auto &name = func.FunctionName();
+	return name == "+" || name == "*";
+}
+
+// Compares two parsed expressions treating '+' and '*' as commutative, the way Spark
+// resolves references against the GROUP BY list (col1 + 1 == 1 + col1). Works in place:
+// it never copies, because in-flight expressions (e.g. BoundExpression) are not copyable.
+static bool SparkCommutativeEquals(const ParsedExpression &left, const ParsedExpression &right) {
+	if (left.Equals(right)) {
+		return true;
+	}
+	if (left.GetExpressionClass() != ExpressionClass::FUNCTION ||
+	    right.GetExpressionClass() != ExpressionClass::FUNCTION) {
+		return false;
+	}
+	auto &left_func = left.Cast<FunctionExpression>();
+	auto &right_func = right.Cast<FunctionExpression>();
+	if (!IsSparkCommutativeOperator(left_func) || !IsSparkCommutativeOperator(right_func) ||
+	    !(left_func.FunctionName() == right_func.FunctionName())) {
+		return false;
+	}
+	auto &left_args = left_func.GetArguments();
+	auto &right_args = right_func.GetArguments();
+	bool same_order = SparkCommutativeEquals(left_args[0].GetExpression(), right_args[0].GetExpression()) &&
+	                  SparkCommutativeEquals(left_args[1].GetExpression(), right_args[1].GetExpression());
+	bool swapped = SparkCommutativeEquals(left_args[0].GetExpression(), right_args[1].GetExpression()) &&
+	               SparkCommutativeEquals(left_args[1].GetExpression(), right_args[0].GetExpression());
+	return same_order || swapped;
 }
 
 ProjectionIndex BaseSelectBinder::TryBindGroup(ParsedExpression &expr) {
@@ -69,6 +106,14 @@ ProjectionIndex BaseSelectBinder::TryBindGroup(ParsedExpression &expr) {
 		D_ASSERT(!expr.Equals(map_entry.first.get()));
 	}
 #endif
+	if (Settings::Get<DialectCompatibilityModeSetting>(context) == DialectCompatibilityMode::SPARK) {
+		// retry the lookup modulo commutative operand order, matching Spark's canonicalization
+		for (auto &group_entry : group_map) {
+			if (SparkCommutativeEquals(expr, group_entry.first.get())) {
+				return group_entry.second;
+			}
+		}
+	}
 	return ProjectionIndex();
 }
 
