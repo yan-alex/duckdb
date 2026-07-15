@@ -162,7 +162,7 @@ public:
 	void Update(DataTable &table, Vector &row_ids, const vector<PhysicalIndex> &column_ids, DataChunk &data);
 
 	//! Commits the local storage, writing it to the WAL and completing the commit
-	vector<unique_lock<mutex>> Commit(optional_ptr<StorageCommitState> commit_state);
+	void Commit(optional_ptr<StorageCommitState> commit_state);
 	//! Rollback the local storage
 	void Rollback();
 
@@ -201,8 +201,7 @@ private:
 	LocalTableManager table_manager;
 
 private:
-	unique_lock<mutex> Flush(DataTable &table, LocalTableStorage &storage,
-	                         optional_ptr<StorageCommitState> commit_state);
+	void Flush(DataTable &table, LocalTableStorage &storage, optional_ptr<StorageCommitState> commit_state);
 };
 
 } // namespace duckdb

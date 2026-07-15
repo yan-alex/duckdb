@@ -263,13 +263,8 @@ ErrorData DuckTransaction::Commit(AttachedDatabase &db, CommitInfo &commit_info,
 
 	UndoBuffer::IteratorState iterator_state;
 	try {
-		// NOTE: this leads to commit_state.cpp:267 CommitAppend()
-		// printf("\nDuckTransaction::Commit() : storage->Commit()");
-		auto append_locks = storage->Commit(commit_state.get());
+		storage->Commit(commit_state.get());
 		undo_buffer.Commit(iterator_state, commit_info);
-		for (auto &append_lock : append_locks) {
-			append_lock.unlock();
-		}
 		// if (DebugForceAbortCommit()) {
 		// 	throw InvalidInputException("Force revert");
 		// }
@@ -279,14 +274,9 @@ ErrorData DuckTransaction::Commit(AttachedDatabase &db, CommitInfo &commit_info,
 		}
 		return ErrorData();
 	} catch (std::exception &ex) {
-		// printf("\nDuckTransaction::Commit() : Caught exception %s", ex.what());
-
-		// printf("\nDuckTransaction::Commit() : undo_buffer.RevertCommit()");
 		undo_buffer.RevertCommit(iterator_state, this->transaction_id);
 		if (commit_state) {
 			// if we have written to the WAL - truncate the WAL on failure
-			// NOTE: this leads to the failing D_ASSERT(IsMainTable()); of DataTable::RevertAppendInternal
-			// printf("\nDuckTransaction::Commit() : commit_state->RevertCommit()");
 			commit_state->RevertCommit();
 		}
 		return ErrorData(ex);
