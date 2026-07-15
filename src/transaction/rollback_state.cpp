@@ -28,6 +28,28 @@ void RollbackState::RollbackEntry(UndoFlags type, data_ptr_t data) {
 	}
 	case UndoFlags::INSERT_TUPLE: {
 		auto info = reinterpret_cast<AppendInfo *>(data);
+		// // I had added this to see if it worked. Gives error:
+		// // 		Query unexpectedly failed! (test/sql/storage/metadata/thijs.test:48)!
+		// // 		================================================================================
+		// // 		checkpoint;
+		// // 		================================================================================
+		// // 		FATAL Error: Failed: database has been invalidated because of a previous fatal error. The database must
+		// be restarted prior to being used again.
+		// // 		Original error: "Failed to rollback transaction. Cannot continue operation.
+		// // 		Original Error: TransactionContext Error: Attempting to modify table t but another transaction has
+		// altered this table
+		// // 		Rollback Error: TransactionContext Error: Attempting to modify table t but another transaction has
+		// altered this table"
+		// //
+		// // 		~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+		//
+		// if (!info->table->IsMainTable()) {
+		// 	auto table_name = info->table->GetTableName();
+		// 	auto table_modification = info->table->TableModification();
+		// 	throw TransactionException("Attempting to modify table %s but another transaction has %s this table",
+		// 							   table_name, table_modification);
+		//
+
 		// revert the append in the base table
 		info->table->RevertAppend(transaction, info->start_row, info->count);
 		break;

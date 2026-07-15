@@ -258,12 +258,15 @@ void CommitState::CommitEntry(UndoFlags type, data_ptr_t data) {
 		// append:
 		auto info = reinterpret_cast<AppendInfo *>(data);
 		if (!info->table->IsMainTable()) {
+			// printf("\nCommitState::CommitEntry() : !info->table->IsMainTable() check FAILED! Throwing transaction
+			// exception");
 			auto table_name = info->table->GetTableName();
 			auto table_modification = info->table->TableModification();
 			throw TransactionException("Attempting to modify table %s but another transaction has %s this table",
 			                           table_name, table_modification);
 		}
 		// mark the tuples as committed
+
 		info->table->CommitAppend(commit_id, info->start_row, info->count);
 		break;
 	}
