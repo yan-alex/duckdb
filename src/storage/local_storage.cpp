@@ -581,15 +581,16 @@ void LocalStorage::Update(DataTable &table, Vector &row_ids, const vector<Physic
 	storage->GetCollection().Update(TransactionData(0, 0), table, ids, column_ids, updates);
 }
 
-void LocalStorage::Flush(DataTable &table, LocalTableStorage &storage, optional_ptr<StorageCommitState> commit_state) {
+unique_lock<mutex> LocalStorage::Flush(DataTable &table, LocalTableStorage &storage,
+                                       optional_ptr<StorageCommitState> commit_state) {
 	if (storage.is_dropped) {
-		return;
+		return unique_lock<mutex>();
 	}
 	if (storage.GetCollection().GetTotalRows() <= storage.deleted_rows) {
 		// all rows that we added were deleted
 		// rollback any partial blocks that are still outstanding
 		storage.Rollback();
-		return;
+		return unique_lock<mutex>();
 	}
 
 	auto append_count = storage.GetCollection().GetTotalRows() - storage.deleted_rows;
@@ -622,19 +623,23 @@ void LocalStorage::Flush(DataTable &table, LocalTableStorage &storage, optional_
 	// Verify that our index memory is stable.
 	table.VerifyIndexBuffers();
 #endif
+	return std::move(append_state.append_lock);
 }
 
-void LocalStorage::Commit(optional_ptr<StorageCommitState> commit_state) {
+vector<unique_lock<mutex>> LocalStorage::Commit(optional_ptr<StorageCommitState> commit_state) {
 	// commit local storage
 	// iterate over all entries in the table storage map and commit them
 	// after this, the local storage is no longer required and can be cleared
 	auto table_storage = table_manager.MoveEntries();
+	vector<unique_lock<mutex>> append_locks;
 	for (auto &entry : table_storage) {
 		auto table = entry.first;
 		auto storage = entry.second.get();
-		Flush(table, *storage, commit_state);
+		auto append_lock = Flush(table, *storage, commit_state);
+		append_locks.push_back(std::move(append_lock));
 		entry.second.reset();
 	}
+	return std::move(append_locks);
 }
 
 void LocalStorage::Rollback() {

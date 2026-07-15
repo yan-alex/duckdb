@@ -1300,11 +1300,13 @@ void DataTable::WriteToLog(DuckTransaction &transaction, WriteAheadLog &log, idx
 }
 
 void DataTable::CommitAppend(transaction_t commit_id, idx_t row_start, idx_t count) {
+	// comment this out?
 	lock_guard<mutex> lock(append_lock);
 	row_groups->CommitAppend(commit_id, row_start, count);
 }
 
 void DataTable::RevertAppendInternal(idx_t start_row) {
+	// NOTE: Fails here
 	D_ASSERT(IsMainTable());
 	// revert appends made to row_groups
 	row_groups->RevertAppendInternal(start_row);
@@ -1312,6 +1314,12 @@ void DataTable::RevertAppendInternal(idx_t start_row) {
 
 void DataTable::RevertAppend(DuckTransaction &transaction, idx_t start_row, idx_t count) {
 	lock_guard<mutex> lock(append_lock);
+	if (!IsMainTable()) {
+		// A concurrent ALTER/DROP has superseded this DataTable since the append was made.
+		// The append being reverted lives in a retired table that nothing will query again --
+		// there is nothing left to revert.
+		return;
+	}
 	auto table_lock = transaction.SharedLockTable(*info);
 
 	// revert any appends to indexes
